@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2 } from 'lucide-react';
+import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2, Info } from 'lucide-react';
 import { getPublishedVenues, useVenuesStore, usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
@@ -14,20 +14,29 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
 
+// Returns { matches, tier } — tier tells the UI whether these results
+// actually satisfy what the user asked for, or are a fallback, so the page
+// can be honest about it instead of always claiming a "match".
 function pickMatches({ min, max, location, category }, venues) {
   const categories = [].concat(category || []).filter(Boolean);
   const locations = [].concat(location || []).filter(Boolean);
+  const minVal = min || 0;
 
-  let matches = venues.filter((v) => v.fromPrice <= max);
-  if (categories.length) matches = matches.filter((v) => categories.includes(v.tab));
-  if (locations.length) {
-    matches = matches.filter((v) => locations.some((loc) => v.location.toLowerCase().includes(loc.toLowerCase())));
-  }
+  const inBudget = (v) => v.fromPrice >= minVal && v.fromPrice <= max;
 
-  if (matches.length === 0) matches = venues.filter((v) => v.fromPrice <= max);
-  if (matches.length === 0) matches = [...venues].sort((a, b) => a.fromPrice - b.fromPrice).slice(0, 4);
+  const exact = venues.filter((v) => {
+    if (!inBudget(v)) return false;
+    if (categories.length && !categories.includes(v.tab)) return false;
+    if (locations.length && !locations.some((loc) => v.location.toLowerCase().includes(loc.toLowerCase()))) return false;
+    return true;
+  });
+  if (exact.length) return { matches: exact.slice(0, 6), tier: 'exact' };
 
-  return matches.slice(0, 6);
+  const budgetOnly = venues.filter(inBudget);
+  if (budgetOnly.length) return { matches: budgetOnly.slice(0, 6), tier: 'budget' };
+
+  const cheapest = [...venues].sort((a, b) => a.fromPrice - b.fromPrice).slice(0, 4);
+  return { matches: cheapest, tier: 'suggestions' };
 }
 
 function buildSelection(venue) {
@@ -51,8 +60,8 @@ export default function PlanResult() {
 
   const params = location.state;
 
-  const matches = useMemo(
-    () => (params ? pickMatches(params, getPublishedVenues()) : []),
+  const { matches, tier } = useMemo(
+    () => (params ? pickMatches(params, getPublishedVenues()) : { matches: [], tier: 'exact' }),
     [params, venuesSnapshot],
   );
   const [pageIndex, setPageIndex] = useState(0);
@@ -172,6 +181,11 @@ export default function PlanResult() {
     notify(`Added ${venue.name}'s plan to your cart.`, 'success');
   };
 
+  const headline =
+    tier === 'exact'
+      ? `We found ${matches.length} place${matches.length > 1 ? 's' : ''} matching your budget.`
+      : "We couldn't find a match for what you're looking for.";
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-5 flex items-center gap-2">
@@ -179,10 +193,19 @@ export default function PlanResult() {
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
           <Sparkles size={16} />
         </span>
-        <h1 className="font-display text-lg font-bold text-ink dark:text-white sm:text-xl">
-          We found {matches.length} Place{matches.length > 1 ? 's' : ''} matching your budget.
-        </h1>
+        <h1 className="font-display text-lg font-bold text-ink dark:text-white sm:text-xl">{headline}</h1>
       </div>
+
+      {tier !== 'exact' && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3.5 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+          <Info size={16} className="mt-0.5 shrink-0" />
+          <p>
+            {tier === 'budget'
+              ? "Nothing matched your chosen category or location, but here's what fits your budget instead."
+              : "Nothing matched your budget or preferences, so here are our top suggestions instead — they may not fit what you asked for."}
+          </p>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
