@@ -31,7 +31,6 @@ export const KEYS = {
   hiddenReviews: 'ballplan_hidden_reviews',
   activity: 'ballplan_admin_activity',
   visitorStats: 'ballplan_visitor_stats',
-  adminAuth: 'ballplan_admin_auth',
   adminTheme: 'ballplan_admin_theme',
   agents: 'ballplan_agents',
   adminProfile: 'ballplan_admin_profile',
@@ -303,17 +302,6 @@ export function unhideReview(id) {
 // ----------------------------------------------------------- visitor stats
 export function getVisitorStats() {
   return readRaw(KEYS.visitorStats, { daily: [], hourly: [] });
-}
-
-// -------------------------------------------------------------- admin auth
-export function getAdminAuth() {
-  return readRaw(KEYS.adminAuth, null);
-}
-export function adminLogin(email) {
-  writeRaw(KEYS.adminAuth, { email, since: new Date().toISOString() });
-}
-export function adminLogout() {
-  writeRaw(KEYS.adminAuth, null);
 }
 
 // ------------------------------------------------------------- admin theme

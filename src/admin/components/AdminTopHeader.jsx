@@ -5,12 +5,12 @@ import { Menu, Search, Bell, Sun, Moon, ChevronDown, Settings, LogOut, Flag } fr
 import {
   useAdminThemeStore,
   setAdminTheme,
-  useAdminAuthStore,
   useActivityStore,
   getActivity,
   useReportsStore,
   getReports,
 } from '../../shared/store';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 function timeAgo(iso) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -28,7 +28,7 @@ export default function AdminTopHeader({ onOpenMobileMenu }) {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const theme = useAdminThemeStore();
-  const auth = useAdminAuthStore();
+  const { user: auth } = useAdminAuth();
   useActivityStore();
   useReportsStore();
   const activity = getActivity().slice(0, 6);

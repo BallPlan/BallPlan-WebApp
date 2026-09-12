@@ -1,34 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
-import { adminLogin, useAdminAuthStore, getAdminProfile, getAdminPassword } from '../../shared/store';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
-  const auth = useAdminAuthStore();
+  const { isStaff, loading: authLoading, signIn } = useAdminAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    if (auth) navigate('/', { replace: true });
-  }, [auth, navigate]);
+    if (isStaff) navigate('/', { replace: true });
+  }, [isStaff, navigate]);
 
-  if (auth) return null;
+  if (authLoading || isStaff) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const validEmail = getAdminProfile().email.toLowerCase();
-    const validPassword = getAdminPassword();
-    if (email.trim().toLowerCase() === validEmail && password === validPassword) {
-      adminLogin(email.trim().toLowerCase());
+    setError('');
+    setSigningIn(true);
+    try {
+      await signIn(email.trim(), password);
       navigate('/', { replace: true });
-      return;
+    } catch (err) {
+      setError(err.message || 'Incorrect email or password.');
+    } finally {
+      setSigningIn(false);
     }
-    setError('Incorrect email or password.');
   };
 
   return (
@@ -59,7 +62,7 @@ export default function AdminLogin() {
                 autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="demo@admin.com"
+                placeholder="you@ballplan.net"
                 className="w-full rounded-xl border border-ink/15 bg-cream py-3 pl-10 pr-4 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
             </div>
@@ -73,7 +76,6 @@ export default function AdminLogin() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="admin123"
                 className="w-full rounded-xl border border-ink/15 bg-cream py-3 pl-10 pr-10 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
               <button
@@ -91,16 +93,18 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            className="w-full rounded-full bg-brand py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark active:scale-[0.98]"
+            disabled={signingIn}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark active:scale-[0.98] disabled:opacity-70"
           >
-            Sign in
+            {signingIn ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Signing in...
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
         </form>
-
-        <p className="mt-5 text-center text-xs text-ink/35">
-          Demo credentials: <span className="font-semibold text-ink/55">demo@admin.com</span> /{' '}
-          <span className="font-semibold text-ink/55">admin123</span>
-        </p>
       </motion.div>
     </div>
   );

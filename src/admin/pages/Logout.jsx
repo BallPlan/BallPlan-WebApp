@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
-import { adminLogout } from '../../shared/store';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 export default function Logout() {
   const navigate = useNavigate();
+  const { signOut } = useAdminAuth();
 
-  const handleYes = () => {
-    adminLogout();
+  const handleYes = async () => {
+    await signOut();
     navigate('/login', { replace: true });
   };
 

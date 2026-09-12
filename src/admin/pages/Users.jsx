@@ -1,36 +1,85 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, Users as UsersIcon, UserX, Eye, Ban, RotateCcw, Trash2 } from 'lucide-react';
 import ActionMenu from '../components/ActionMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import StatCard from '../components/StatCard';
-import { useUsersStore, getUsers, updateUser, deleteUser } from '../../shared/store';
+import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../context/ToastContext';
+
+function displayName(row) {
+  return row.name || [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email.split('@')[0];
+}
 
 export default function Users() {
   const [query, setQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewTarget, setViewTarget] = useState(null);
+  const [viewCounts, setViewCounts] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { notify } = useToast();
 
-  const snapshot = useUsersStore();
-  const users = useMemo(() => getUsers(), [snapshot]);
+  const loadUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, name, first_name, last_name, status, created_at')
+      .eq('role', 'customer')
+      .order('created_at', { ascending: false });
+    if (error) {
+      notify('Could not load users.', 'warning');
+    } else {
+      setUsers(data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!viewTarget) {
+      setViewCounts(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [plans, reports] = await Promise.all([
+        supabase.from('plan_requests').select('id', { count: 'exact', head: true }).eq('user_id', viewTarget.id),
+        supabase.from('price_reports').select('id', { count: 'exact', head: true }).eq('reported_by', viewTarget.id),
+      ]);
+      if (!cancelled) setViewCounts({ plans: plans.count ?? 0, reports: reports.count ?? 0 });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [viewTarget]);
+
   const suspendedCount = users.filter((u) => u.status === 'suspended').length;
 
   const filtered = useMemo(
-    () => users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(query.toLowerCase())),
+    () => users.filter((u) => `${displayName(u)} ${u.email}`.toLowerCase().includes(query.toLowerCase())),
     [users, query],
   );
 
-  const toggleSuspend = (user) => {
+  const toggleSuspend = async (user) => {
     const next = user.status === 'active' ? 'suspended' : 'active';
-    updateUser(user.id, { status: next });
+    const { error } = await supabase.from('profiles').update({ status: next }).eq('id', user.id);
+    if (error) {
+      notify('Could not update this user.', 'warning');
+      return;
+    }
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: next } : u)));
     notify(`${user.email} ${next === 'active' ? 'reinstated' : 'suspended'}.`, next === 'active' ? 'success' : 'warning');
   };
 
   const handleDelete = () => {
-    deleteUser(deleteTarget.id);
-    notify(`${deleteTarget.email} was deleted.`, 'success');
+    // Deleting the actual login requires Supabase's Admin Auth API (service
+    // role only) — not available from the client. Needs an Edge Function.
+    notify('Deleting user accounts requires an admin function that has not been built yet.', 'warning');
     setDeleteTarget(null);
   };
 
@@ -65,41 +114,43 @@ export default function Users() {
           <span className="text-right">Actions</span>
         </div>
         <div className="divide-y divide-ink/5 dark:divide-white/5">
-          {filtered.map((user) => (
-            <div key={user.id} className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.5fr_1.2fr_0.8fr_0.6fr] lg:items-center">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-ink dark:text-white">{user.email}</p>
-                <p className="truncate text-xs text-ink/40 dark:text-white/40">{user.name}</p>
+          {loading && <p className="py-16 text-center text-sm text-ink/40 dark:text-white/40">Loading users...</p>}
+          {!loading &&
+            filtered.map((user) => (
+              <div key={user.id} className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.5fr_1.2fr_0.8fr_0.6fr] lg:items-center">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-ink dark:text-white">{user.email}</p>
+                  <p className="truncate text-xs text-ink/40 dark:text-white/40">{displayName(user)}</p>
+                </div>
+                <span className="text-sm text-ink/60 dark:text-white/60">
+                  {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                <span
+                  className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    user.status === 'active'
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                      : 'bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400'
+                  }`}
+                >
+                  {user.status === 'active' ? 'Active' : 'Suspended'}
+                </span>
+                <div className="flex justify-end">
+                  <ActionMenu
+                    items={[
+                      { label: 'View profile', icon: Eye, onClick: () => setViewTarget(user) },
+                      {
+                        label: user.status === 'active' ? 'Suspend' : 'Reinstate',
+                        icon: user.status === 'active' ? Ban : RotateCcw,
+                        onClick: () => toggleSuspend(user),
+                      },
+                      { divider: true },
+                      { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(user) },
+                    ]}
+                  />
+                </div>
               </div>
-              <span className="text-sm text-ink/60 dark:text-white/60">
-                {new Date(user.joined).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-              <span
-                className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                  user.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
-                    : 'bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400'
-                }`}
-              >
-                {user.status === 'active' ? 'Active' : 'Suspended'}
-              </span>
-              <div className="flex justify-end">
-                <ActionMenu
-                  items={[
-                    { label: 'View profile', icon: Eye, onClick: () => setViewTarget(user) },
-                    {
-                      label: user.status === 'active' ? 'Suspend' : 'Reinstate',
-                      icon: user.status === 'active' ? Ban : RotateCcw,
-                      onClick: () => toggleSuspend(user),
-                    },
-                    { divider: true },
-                    { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(user) },
-                  ]}
-                />
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && <p className="py-16 text-center text-sm text-ink/40 dark:text-white/40">No users match your search.</p>}
+            ))}
+          {!loading && filtered.length === 0 && <p className="py-16 text-center text-sm text-ink/40 dark:text-white/40">No users match your search.</p>}
         </div>
       </div>
 
@@ -107,9 +158,9 @@ export default function Users() {
         {viewTarget && (
           <div className="space-y-3 text-sm">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand/10 text-lg font-bold text-brand">
-              {viewTarget.name.slice(0, 2).toUpperCase()}
+              {displayName(viewTarget).slice(0, 2).toUpperCase()}
             </div>
-            <p className="text-base font-bold text-ink dark:text-white">{viewTarget.name}</p>
+            <p className="text-base font-bold text-ink dark:text-white">{displayName(viewTarget)}</p>
             <div className="grid grid-cols-2 gap-3 rounded-xl bg-ink/5 p-3 dark:bg-white/5">
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Email</p>
@@ -117,15 +168,15 @@ export default function Users() {
               </div>
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Joined</p>
-                <p className="font-medium text-ink dark:text-white">{new Date(viewTarget.joined).toLocaleDateString()}</p>
+                <p className="font-medium text-ink dark:text-white">{new Date(viewTarget.created_at).toLocaleDateString()}</p>
               </div>
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Plans created</p>
-                <p className="font-medium text-ink dark:text-white">{viewTarget.plans}</p>
+                <p className="font-medium text-ink dark:text-white">{viewCounts ? viewCounts.plans : '...'}</p>
               </div>
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Reports submitted</p>
-                <p className="font-medium text-ink dark:text-white">{viewTarget.reports}</p>
+                <p className="font-medium text-ink dark:text-white">{viewCounts ? viewCounts.reports : '...'}</p>
               </div>
             </div>
           </div>
