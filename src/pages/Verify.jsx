@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 export default function Verify() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { verifyCode } = useAuth();
   const { notify } = useToast();
 
   const email = location.state?.email;
@@ -31,16 +31,29 @@ export default function Verify() {
   const complete = digits.every((d) => d !== '');
 
   useEffect(() => {
-    if (complete && !verifying) {
-      setVerifying(true);
-      console.log('[auth] verifying code', digits.join(''), 'for', email);
-      const t = setTimeout(() => {
-        login(email);
-        notify(`Welcome to BallPlan, ${email.split('@')[0]}!`, 'success');
+    if (!complete || verifying) return;
+    let cancelled = false;
+    setVerifying(true);
+
+    verifyCode(email, digits.join(''))
+      .then((user) => {
+        if (cancelled) return;
+        notify(`Welcome to BallPlan, ${(user.user_metadata?.name || email.split('@')[0])}!`, 'success');
         navigate('/');
-      }, 900);
-      return () => clearTimeout(t);
-    }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        notify(err.message || 'That code is incorrect or has expired.', 'warning');
+        setDigits(Array(6).fill(''));
+        inputsRef.current[0]?.focus();
+      })
+      .finally(() => {
+        if (!cancelled) setVerifying(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [complete]);
 
