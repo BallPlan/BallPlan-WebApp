@@ -76,11 +76,18 @@ export default function Users() {
     notify(`${user.email} ${next === 'active' ? 'reinstated' : 'suspended'}.`, next === 'active' ? 'success' : 'warning');
   };
 
-  const handleDelete = () => {
-    // Deleting the actual login requires Supabase's Admin Auth API (service
-    // role only) — not available from the client. Needs an Edge Function.
-    notify('Deleting user accounts requires an admin function that has not been built yet.', 'warning');
+  const handleDelete = async () => {
+    const target = deleteTarget;
     setDeleteTarget(null);
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: target.id },
+    });
+    if (error || data?.error) {
+      notify(data?.error || 'Could not delete this user.', 'warning');
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== target.id));
+    notify(`${target.email} was deleted.`, 'success');
   };
 
   return (
