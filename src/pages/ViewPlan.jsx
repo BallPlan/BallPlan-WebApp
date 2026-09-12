@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Trash2, MapPin, Tag, Store, Download, Loader2 } from 'lucide-react';
+import { Trash2, MapPin, Tag, Store, Download, Loader2, Bookmark, Save } from 'lucide-react';
 import ImageWithFallback from '../components/ImageWithFallback';
 import QuantityStepper from '../components/QuantityStepper';
 import EmptyCart from '../components/EmptyCart';
 import BackButton from '../components/BackButton';
+import SavedPlansModal from '../components/SavedPlansModal';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatNaira } from '../utils/currency';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
+import { supabase } from '../lib/supabaseClient';
 
 const GROUPINGS = [
   { key: 'venueName', label: 'Venue', icon: Store },
@@ -18,9 +22,13 @@ const GROUPINGS = [
 
 export default function ViewPlan() {
   const { items, updateQty, removeItem, totalPrice, totalItems } = useCart();
+  const { user } = useAuth();
   const { notify } = useToast();
+  const navigate = useNavigate();
   const [groupBy, setGroupBy] = useState('venueName');
   const [downloading, setDownloading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedPlansOpen, setSavedPlansOpen] = useState(false);
 
   const sections = useMemo(() => {
     const map = new Map();
@@ -45,6 +53,7 @@ export default function ViewPlan() {
         groupLabel: GROUPINGS.find((g) => g.key === groupBy).label,
         totalItems,
         totalPrice,
+        preparedFor: user?.email,
       });
       console.log('[view-plan] downloaded PDF plan with', totalItems, 'items');
       notify('Your plan has been downloaded.', 'success');
@@ -56,6 +65,30 @@ export default function ViewPlan() {
     }
   };
 
+  const handleSavePlan = async () => {
+    if (!user) {
+      notify('Sign in to save your plan.', 'warning');
+      navigate('/signin');
+      return;
+    }
+    setSaving(true);
+    const uniqueVenues = Array.from(new Set(items.map((i) => i.venueName)));
+    const name = uniqueVenues.length <= 2 ? uniqueVenues.join(' & ') : `${uniqueVenues[0]} + ${uniqueVenues.length - 1} more`;
+    const { error } = await supabase.from('saved_plans').insert({
+      user_id: user.id,
+      name,
+      items,
+      item_count: totalItems,
+      total_price: totalPrice,
+    });
+    setSaving(false);
+    if (error) {
+      notify('Could not save your plan.', 'warning');
+      return;
+    }
+    notify('Plan saved — find it via the bookmark icon.', 'success');
+  };
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -64,26 +97,35 @@ export default function ViewPlan() {
           <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Your Plan</h1>
         </div>
 
-        {items.length > 0 && (
-          <div className="flex items-center gap-1 rounded-full bg-white p-1 shadow-card dark:bg-[#1c1c1e]">
-            {GROUPINGS.map(({ key, label, icon: Icon }) => {
-              const active = groupBy === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => setGroupBy(key)}
-                  className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                    active
-                      ? 'bg-ink text-white dark:bg-white dark:text-ink'
-                      : 'text-ink/50 hover:text-ink dark:text-white/50 dark:hover:text-white'
-                  }`}
-                >
-                  <Icon size={13} /> {label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <div className="flex items-center gap-1 rounded-full bg-white p-1 shadow-card dark:bg-[#1c1c1e]">
+              {GROUPINGS.map(({ key, label, icon: Icon }) => {
+                const active = groupBy === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setGroupBy(key)}
+                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                      active
+                        ? 'bg-ink text-white dark:bg-white dark:text-ink'
+                        : 'text-ink/50 hover:text-ink dark:text-white/50 dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon size={13} /> {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            onClick={() => setSavedPlansOpen(true)}
+            aria-label="Saved plans"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-card transition hover:bg-brand hover:text-white dark:bg-[#1c1c1e]"
+          >
+            <Bookmark size={16} />
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -170,26 +212,39 @@ export default function ViewPlan() {
               <p className="text-lg font-extrabold text-ink dark:text-white">Plan Total - {totalItems} items</p>
               <span className="text-2xl font-extrabold text-brand">{formatNaira(totalPrice)}</span>
             </div>
-            <motion.button
-              whileHover={{ scale: downloading ? 1 : 1.01 }}
-              whileTap={{ scale: downloading ? 1 : 0.98 }}
-              onClick={handleDownload}
-              disabled={downloading}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:opacity-70"
-            >
-              {downloading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Preparing your PDF...
-                </>
-              ) : (
-                <>
-                  <Download size={16} /> Download plan
-                </>
-              )}
-            </motion.button>
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+              <motion.button
+                whileHover={{ scale: saving ? 1 : 1.02 }}
+                whileTap={{ scale: saving ? 1 : 0.98 }}
+                onClick={handleSavePlan}
+                disabled={saving}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-ink py-3.5 text-sm font-bold text-ink transition hover:bg-ink hover:text-white disabled:opacity-70 dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-ink"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Plan
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: downloading ? 1 : 1.02 }}
+                whileTap={{ scale: downloading ? 1 : 0.98 }}
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-brand py-3.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:opacity-70"
+              >
+                {downloading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Preparing...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} /> Download plan
+                  </>
+                )}
+              </motion.button>
+            </div>
           </div>
         </>
       )}
+
+      <SavedPlansModal open={savedPlansOpen} onClose={() => setSavedPlansOpen(false)} />
     </div>
   );
 }

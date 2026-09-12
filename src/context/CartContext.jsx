@@ -21,6 +21,8 @@ export function CartProvider({ children }) {
           venueName: venue.name,
           category: venue.tab,
           location: venue.location,
+          address: venue.address,
+          phone: venue.phone,
           itemId: item.id,
           name: item.name,
           image: item.image,
@@ -46,6 +48,9 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setItems([]);
 
+  // Replaces the cart wholesale with a previously saved snapshot.
+  const loadItems = (savedItems) => setItems(savedItems);
+
   const totalItems = useMemo(() => items.reduce((sum, i) => sum + i.qty, 0), [items]);
   const totalPrice = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items]);
 
@@ -53,7 +58,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, totalPrice, isInCart }}
+      value={{ items, addItem, removeItem, updateQty, clearCart, loadItems, totalItems, totalPrice, isInCart }}
     >
       {children}
     </CartContext.Provider>

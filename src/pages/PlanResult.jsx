@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play } from 'lucide-react';
+import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2 } from 'lucide-react';
 import { getPublishedVenues, useVenuesStore, usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
@@ -10,7 +10,9 @@ import BackButton from '../components/BackButton';
 import { formatNaira } from '../utils/currency';
 import { openDirections } from '../utils/maps';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { downloadPlanPdf } from '../utils/generatePlanPdf';
 
 function pickMatches({ min, max, location, category }, venues) {
   const categories = [].concat(category || []).filter(Boolean);
@@ -41,7 +43,9 @@ export default function PlanResult() {
   const location = useLocation();
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { user } = useAuth();
   const { notify } = useToast();
+  const [downloading, setDownloading] = useState(false);
   const venuesSnapshot = useVenuesStore();
   const overridesSnapshot = usePriceOverridesStore();
 
@@ -121,30 +125,44 @@ export default function PlanResult() {
   const totalItemsCount = allSelected.reduce((sum, i) => sum + i.qty, 0);
   const savings = params.max - total;
 
-  const handleDownload = () => {
-    const lines = [
-      `BallPlan Plan — ${venue.name}`,
-      venue.address,
-      '',
-      ...(selectedMenu.length ? ['MENU', ...selectedMenu.map((i) => `${i.name} x${i.qty} — ${formatNaira(i.price * i.qty)}`), ''] : []),
-      ...(selectedActivities.length
-        ? ['ACTIVITIES', ...selectedActivities.map((i) => `${i.name} x${i.qty} — ${formatNaira(i.price * i.qty)}`), '']
-        : []),
-      `Estimated Total: ${formatNaira(total)}`,
-      `Budget: ${formatNaira(params.max)}`,
-      `${savings >= 0 ? 'Savings' : 'Over budget'}: ${formatNaira(Math.abs(savings))}`,
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ballplan-plan-${venue.id}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    console.log('[plan-result] downloaded plan for', venue.name);
-    notify('Your plan has been downloaded.', 'success');
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const sections = [
+        {
+          key: venue.name,
+          items: allSelected.map((item) => ({
+            name: item.name,
+            venueId: venue.id,
+            venueName: venue.name,
+            location: venue.location,
+            address: venue.address,
+            phone: venue.phone,
+            image: item.image,
+            unitPrice: item.price,
+            qty: item.qty,
+            kind: item.kind,
+          })),
+          subtotal: total,
+          count: totalItemsCount,
+        },
+      ];
+      await downloadPlanPdf({
+        sections,
+        groupLabel: 'Venue',
+        totalItems: totalItemsCount,
+        totalPrice: total,
+        preparedFor: user?.email,
+        budget: params.max,
+      });
+      console.log('[plan-result] downloaded PDF plan for', venue.name);
+      notify('Your plan has been downloaded.', 'success');
+    } catch (err) {
+      console.error('[plan-result] failed to generate PDF', err);
+      notify('Could not generate your PDF. Please try again.', 'warning');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleAddToCart = () => {
@@ -296,12 +314,21 @@ export default function PlanResult() {
                 <ShoppingBag size={16} /> Add to Cart
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: downloading ? 1 : 1.02 }}
+                whileTap={{ scale: downloading ? 1 : 0.98 }}
                 onClick={handleDownload}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-bold text-white shadow-soft transition hover:brightness-105"
+                disabled={downloading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-dark py-3.5 text-sm font-bold text-white shadow-soft transition hover:brightness-105 disabled:opacity-70"
               >
-                <Download size={16} /> Download
+                {downloading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Preparing...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} /> Download
+                  </>
+                )}
               </motion.button>
             </div>
           </div>

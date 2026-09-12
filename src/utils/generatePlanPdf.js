@@ -7,31 +7,48 @@ const BRAND = [180, 88, 25];
 const INK = [18, 18, 18];
 const MUTED = [140, 140, 140];
 const CREAM = [248, 245, 240];
+const IMG_SIZE = 26;
 
 function loadImage(src) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => resolve(null); // graceful degradation — a broken thumbnail shouldn't fail the whole PDF
     img.src = src;
   });
 }
 
-export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalPrice }) {
+async function preloadImages(sections) {
+  const sources = new Set();
+  sections.forEach((s) => s.items.forEach((i) => i.image && sources.add(i.image)));
+  const entries = await Promise.all(Array.from(sources).map(async (src) => [src, await loadImage(src)]));
+  return new Map(entries);
+}
+
+export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalPrice, preparedFor, budget }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 40;
 
-  // Header band
+  const venueCount = new Set(sections.flatMap((s) => s.items.map((i) => i.venueId))).size;
+  const images = await preloadImages(sections);
+
+  // ---------------------------------------------------------------- header
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, pageWidth, 92, 'F');
+  doc.rect(0, 0, pageWidth, 104, 'F');
 
   try {
-    const img = await loadImage(fullLogo);
-    const logoH = 26;
-    const logoW = (img.width / img.height) * logoH;
-    doc.addImage(img, 'PNG', margin, 30, logoW, logoH);
+    const logo = await loadImage(fullLogo);
+    if (logo) {
+      const logoH = 26;
+      const logoW = (logo.width / logo.height) * logoH;
+      doc.addImage(logo, 'PNG', margin, 30, logoW, logoH);
+    } else {
+      throw new Error('logo failed to load');
+    }
   } catch {
     doc.setTextColor(255, 255, 255);
     doc.setFont('times', 'bold');
@@ -48,10 +65,24 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
   const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
   doc.text(`Generated ${dateStr} · grouped by ${groupLabel.toLowerCase()}`, pageWidth - margin, 62, { align: 'right' });
 
-  let cursorY = 122;
+  const summaryParts = [
+    `${venueCount} venue${venueCount === 1 ? '' : 's'}`,
+    `${totalItems} item${totalItems === 1 ? '' : 's'}`,
+  ];
+  if (budget != null) {
+    const savings = budget - totalPrice;
+    summaryParts.push(`Budget ${formatNaira(budget)}`);
+    summaryParts.push(`${savings >= 0 ? 'Savings' : 'Over budget'} ${formatNaira(Math.abs(savings))}`);
+  }
+  if (preparedFor) summaryParts.unshift(`Prepared for ${preparedFor}`);
+  doc.setFontSize(9.5);
+  doc.text(summaryParts.join('  ·  '), pageWidth - margin, 77, { align: 'right' });
 
+  let cursorY = 132;
+
+  // -------------------------------------------------------------- sections
   sections.forEach((section) => {
-    if (cursorY > pageHeight - 140) {
+    if (cursorY > pageHeight - 160) {
       doc.addPage();
       cursorY = 50;
     }
@@ -59,31 +90,50 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
     doc.setFillColor(...CREAM);
     doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 5, 5, 'F');
 
+    // Small icon bubble, mirroring the icon badge next to each group's
+    // heading on the ViewPlan page.
+    doc.setFillColor(...BRAND);
+    doc.circle(margin + 15, cursorY + 14, 8, 'F');
+    doc.setDrawColor(255, 255, 255);
+
     doc.setFont('times', 'bold');
     doc.setFontSize(12.5);
     doc.setTextColor(...INK);
-    doc.text(section.key, margin + 12, cursorY + 18.5);
+    doc.text(section.key, margin + 32, cursorY + 18.5);
 
     const titleWidth = doc.getTextWidth(section.key);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(...MUTED);
-    doc.text(`· ${section.count} item${section.count === 1 ? '' : 's'}`, margin + 18 + titleWidth, cursorY + 18.5);
+    doc.text(`· ${section.count} item${section.count === 1 ? '' : 's'}`, margin + 38 + titleWidth, cursorY + 18.5);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11.5);
     doc.setTextColor(...BRAND);
     doc.text(formatNaira(section.subtotal), pageWidth - margin - 12, cursorY + 18.5, { align: 'right' });
 
-    cursorY += 38;
+    cursorY += 34;
+
+    // When grouped by venue, the section already represents one place —
+    // show its address/phone once instead of repeating it on every row.
+    const venueInfo = section.items[0];
+    if (groupLabel === 'Venue' && (venueInfo?.address || venueInfo?.phone)) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MUTED);
+      const contactLine = [venueInfo.address, venueInfo.phone].filter(Boolean).join('   ·   ');
+      doc.text(contactLine, margin + 4, cursorY);
+      cursorY += 14;
+    }
 
     autoTable(doc, {
       startY: cursorY,
       margin: { left: margin, right: margin },
-      head: [['Item', 'Venue', 'Qty', 'Unit Price', 'Total']],
+      head: [['', 'Item', 'Venue', 'Qty', 'Unit Price', 'Total']],
       body: section.items.map((item) => [
+        '',
         item.name,
-        `${item.venueName}${item.location ? ` · ${item.location}` : ''}`,
+        `${item.venueName}${item.location ? `\n${item.location}` : ''}`,
         String(item.qty),
         formatNaira(item.unitPrice),
         formatNaira(item.unitPrice * item.qty),
@@ -96,6 +146,8 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
         cellPadding: { top: 7, bottom: 7, left: 10, right: 10 },
         lineColor: [235, 232, 227],
         lineWidth: { bottom: 0.75 },
+        minCellHeight: IMG_SIZE + 8,
+        valign: 'middle',
       },
       headStyles: {
         textColor: MUTED,
@@ -105,16 +157,31 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
         lineColor: [220, 216, 210],
       },
       columnStyles: {
-        1: { textColor: MUTED },
-        2: { halign: 'center', cellWidth: 36 },
-        3: { halign: 'right', cellWidth: 78 },
-        4: { halign: 'right', cellWidth: 78, fontStyle: 'bold', textColor: BRAND },
+        0: { cellWidth: IMG_SIZE + 16 },
+        2: { textColor: MUTED, fontSize: 8.5 },
+        3: { halign: 'center', cellWidth: 36 },
+        4: { halign: 'right', cellWidth: 78 },
+        5: { halign: 'right', cellWidth: 78, fontStyle: 'bold', textColor: BRAND },
+      },
+      didDrawCell: (data) => {
+        if (data.section !== 'body' || data.column.index !== 0) return;
+        const item = section.items[data.row.index];
+        const img = item && images.get(item.image);
+        if (!img) return;
+        const x = data.cell.x + (data.cell.width - IMG_SIZE) / 2;
+        const y = data.cell.y + (data.cell.height - IMG_SIZE) / 2;
+        try {
+          doc.addImage(img, 'JPEG', x, y, IMG_SIZE, IMG_SIZE, undefined, 'FAST');
+        } catch {
+          // unsupported image format for this browser/canvas combo — skip silently
+        }
       },
     });
 
     cursorY = doc.lastAutoTable.finalY + 24;
   });
 
+  // ------------------------------------------------------------------ total
   if (cursorY > pageHeight - 90) {
     doc.addPage();
     cursorY = 60;
