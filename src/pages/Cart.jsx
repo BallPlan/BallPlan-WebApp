@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, XCircle } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import ImageWithFallback from '../components/ImageWithFallback';
 import QuantityStepper from '../components/QuantityStepper';
 import EmptyCart from '../components/EmptyCart';
 import BackButton from '../components/BackButton';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useCart } from '../context/CartContext';
 import { useBudget } from '../context/BudgetContext';
 import { formatNaira } from '../utils/currency';
@@ -15,10 +17,12 @@ export default function Cart() {
   const { budget, budgetActive } = useBudget();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleClearCart = () => {
     clearCart();
     notify('Your cart has been cleared.', 'success');
+    setConfirmOpen(false);
   };
 
   return (
@@ -29,12 +33,14 @@ export default function Cart() {
           <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Your Carts</h1>
         </div>
         {items.length > 0 && (
-          <button
-            onClick={handleClearCart}
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-50 dark:hover:bg-red-500/10"
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setConfirmOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50/60 px-4 py-2 text-xs font-bold text-red-500 shadow-sm transition hover:border-red-500 hover:bg-red-500 hover:text-white dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500"
           >
-            <XCircle size={14} /> Clear cart
-          </button>
+            <Trash2 size={14} /> Clear cart
+          </motion.button>
         )}
       </div>
 
@@ -119,6 +125,16 @@ export default function Cart() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Clear your cart?"
+        description="This will remove every item currently in your cart. This can't be undone."
+        confirmLabel="Yes, clear it"
+        cancelLabel="No, keep it"
+        onConfirm={handleClearCart}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
