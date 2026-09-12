@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Minus, Plus, Sparkles, Loader2, Check } from 'lucide-react';
+import { Minus, Plus, Sparkles, Loader2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
+import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { getActiveCategoryNames, getPublishedVenues, useVenuesStore, useCategoriesStore } from '../shared/store';
 import { useToast } from '../context/ToastContext';
 import { integerInputProps } from '../utils/integerInput';
@@ -11,23 +12,17 @@ export default function BallPlanPlan() {
   const navigate = useNavigate();
   const { notify } = useToast();
 
-  const [min, setMin] = useState('10000');
-  const [max, setMax] = useState('50000');
-  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [min, setMin] = useState('');
+  const [max, setMax] = useState('');
+  const [location, setLocation] = useState([]);
   const [people, setPeople] = useState(2);
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [category, setCategory] = useState([]);
   const [info, setInfo] = useState('');
   const [generating, setGenerating] = useState(false);
 
-  const toggleValue = (setter) => (value) => {
-    setter((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
-  };
-  const toggleLocation = toggleValue(setSelectedLocations);
-  const toggleCategory = toggleValue(setSelectedCategories);
-
   const venuesSnapshot = useVenuesStore();
   const categoriesSnapshot = useCategoriesStore();
-  const categories = useMemo(() => getActiveCategoryNames(), [categoriesSnapshot]);
+  const categories = useMemo(() => getActiveCategoryNames().filter((c) => c !== 'All'), [categoriesSnapshot]);
   const locations = useMemo(
     () => Array.from(new Set(getPublishedVenues().map((v) => v.location.split(',')[0].trim()))).sort(),
     [venuesSnapshot],
@@ -35,30 +30,30 @@ export default function BallPlanPlan() {
 
   const handleGenerate = (e) => {
     e.preventDefault();
-    const minVal = Number(min) || 0;
-    const maxVal = Number(max) || 0;
-    if (maxVal <= 0) {
-      notify('Enter a valid maximum budget.', 'warning');
-      return;
-    }
-    if (minVal > maxVal) {
-      notify('Minimum budget cannot be greater than maximum.', 'warning');
-      return;
-    }
+
+    if (!min.trim()) return notify('Enter your minimum budget.', 'warning');
+    if (!max.trim()) return notify('Enter your maximum budget.', 'warning');
+
+    const minVal = Number(min);
+    const maxVal = Number(max);
+    if (maxVal <= 0) return notify('Enter a valid maximum budget.', 'warning');
+    if (minVal > maxVal) return notify('Minimum budget cannot be greater than maximum.', 'warning');
+    if (location.length === 0) return notify('Select at least one location.', 'warning');
+    if (category.length === 0) return notify('Select at least one category.', 'warning');
 
     console.log('[ballplan-plan] generating with', {
       minVal,
       maxVal,
-      locations: selectedLocations,
+      location,
       people,
-      categories: selectedCategories,
+      category,
       info,
     });
     setGenerating(true);
     setTimeout(() => {
       setGenerating(false);
       navigate('/plan-outing/result', {
-        state: { min: minVal, max: maxVal, location: selectedLocations, people, category: selectedCategories, info },
+        state: { min: minVal, max: maxVal, location, people, category, info },
       });
     }, 1600);
   };
@@ -104,26 +99,7 @@ export default function BallPlanPlan() {
           <label className="mb-2 block text-sm font-semibold text-ink/70 dark:text-white/70">
             Location <span className="font-normal text-ink/40 dark:text-white/40">(select as many as you like)</span>
           </label>
-          <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-3 shadow-card dark:bg-[#1c1c1e]">
-            {locations.map((loc) => {
-              const active = selectedLocations.includes(loc);
-              return (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => toggleLocation(loc)}
-                  className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                    active
-                      ? 'bg-ink text-white dark:bg-white dark:text-ink'
-                      : 'bg-cream text-ink/60 hover:text-ink dark:bg-white/10 dark:text-white/60 dark:hover:text-white'
-                  }`}
-                >
-                  {active && <Check size={13} />}
-                  {loc}
-                </button>
-              );
-            })}
-          </div>
+          <MultiSelectDropdown value={location} onChange={setLocation} placeholder="Search and select locations" options={locations} />
         </div>
 
         <div>
@@ -151,26 +127,7 @@ export default function BallPlanPlan() {
           <label className="mb-2 block text-sm font-semibold text-ink/70 dark:text-white/70">
             Category <span className="font-normal text-ink/40 dark:text-white/40">(select as many as you like)</span>
           </label>
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-brand/30 bg-white p-3 shadow-sm dark:bg-[#1c1c1e]">
-            {categories.filter((c) => c !== 'All').map((c) => {
-              const active = selectedCategories.includes(c);
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => toggleCategory(c)}
-                  className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                    active
-                      ? 'bg-brand text-white'
-                      : 'bg-cream text-ink/60 hover:text-ink dark:bg-white/10 dark:text-white/60 dark:hover:text-white'
-                  }`}
-                >
-                  {active && <Check size={13} />}
-                  {c}
-                </button>
-              );
-            })}
-          </div>
+          <MultiSelectDropdown value={category} onChange={setCategory} placeholder="Search and select categories" options={categories} />
         </div>
 
         <div>
