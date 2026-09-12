@@ -21,7 +21,11 @@ export default function SignIn() {
       await sendCode(email.trim(), false);
       navigate('/verify', { state: { email: email.trim(), mode: 'signin' } });
     } catch (err) {
-      notify(err.message || 'Could not send a sign-in code. Try again.', 'warning');
+      if (err.code === 'otp_disabled') {
+        notify("We couldn't find a BallPlan account for that email — try signing up instead.", 'warning');
+      } else {
+        notify(err.message || 'Could not send a sign-in code. Try again.', 'warning');
+      }
     } finally {
       setSending(false);
     }
