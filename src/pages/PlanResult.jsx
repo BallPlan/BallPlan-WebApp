@@ -18,8 +18,8 @@ import { downloadPlanPdf } from '../utils/generatePlanPdf';
 // actually satisfy what the user asked for, or are a fallback, so the page
 // can be honest about it instead of always claiming a "match". When the
 // budget doesn't fit anything, category/location take priority over price —
-// we fall back to the cheapest venues that still match what was picked,
-// rather than dropping preferences to chase the budget.
+// we fall back to venues that still match what was picked, ranked by how
+// close their price is to the stated budget (not just the cheapest ones).
 function pickMatches({ max, location, category }, venues) {
   const categories = [].concat(category || []).filter(Boolean);
   const locations = [].concat(location || []).filter(Boolean);
@@ -29,18 +29,16 @@ function pickMatches({ max, location, category }, venues) {
     if (locations.length && !locations.some((loc) => v.location.toLowerCase().includes(loc.toLowerCase()))) return false;
     return true;
   };
+  const byClosenessToBudget = (a, b) => Math.abs(a.fromPrice - max) - Math.abs(b.fromPrice - max);
 
   const exact = venues.filter((v) => v.fromPrice <= max && matchesPreferences(v));
   if (exact.length) return { matches: exact.slice(0, 6), tier: 'exact' };
 
-  const preferenceOnly = venues
-    .filter(matchesPreferences)
-    .sort((a, b) => a.fromPrice - b.fromPrice)
-    .slice(0, 6);
+  const preferenceOnly = venues.filter(matchesPreferences).sort(byClosenessToBudget).slice(0, 6);
   if (preferenceOnly.length) return { matches: preferenceOnly, tier: 'preference' };
 
-  const cheapest = [...venues].sort((a, b) => a.fromPrice - b.fromPrice).slice(0, 4);
-  return { matches: cheapest, tier: 'suggestions' };
+  const closest = [...venues].sort(byClosenessToBudget).slice(0, 4);
+  return { matches: closest, tier: 'suggestions' };
 }
 
 function buildSelection(venue) {
@@ -205,8 +203,8 @@ export default function PlanResult() {
           <Info size={16} className="mt-0.5 shrink-0" />
           <p>
             {tier === 'preference'
-              ? "Nothing fit your budget, so here are the lowest-priced places in your chosen category and location instead."
-              : "Nothing matched your budget or preferences, so here are our top suggestions instead — they may not fit what you asked for."}
+              ? "Nothing fit your budget exactly, so here are places in your chosen category and location closest to it instead."
+              : "Nothing matched your budget or preferences, so here are our closest suggestions instead — they may not fit what you asked for."}
           </p>
         </div>
       )}
