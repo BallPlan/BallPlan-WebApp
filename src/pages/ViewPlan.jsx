@@ -108,7 +108,7 @@ export default function ViewPlan() {
                     onClick={() => setGroupBy(key)}
                     className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                       active
-                        ? 'bg-ink text-white dark:bg-white dark:text-ink'
+                        ? 'bg-brand text-white dark:bg-brand dark:text-white'
                         : 'text-ink/50 hover:text-ink dark:text-white/50 dark:hover:text-white'
                     }`}
                   >
@@ -218,7 +218,7 @@ export default function ViewPlan() {
                 whileTap={{ scale: saving ? 1 : 0.98 }}
                 onClick={handleSavePlan}
                 disabled={saving}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-ink py-3.5 text-sm font-bold text-ink transition hover:bg-ink hover:text-white disabled:opacity-70 dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-ink"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-brand py-3.5 text-sm font-bold text-brand transition hover:bg-brand hover:text-white disabled:opacity-70"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save Plan
               </motion.button>

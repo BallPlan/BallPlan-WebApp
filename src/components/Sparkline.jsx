@@ -88,7 +88,7 @@ export default function Sparkline({ points, trend, width = 160, height = 44 }) {
 
       {hoverIndex != null && (
         <div
-          className="pointer-events-none absolute -top-8 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-lg dark:bg-white dark:text-ink"
+          className="pointer-events-none absolute -top-8 -translate-x-1/2 whitespace-nowrap rounded-md bg-brand px-2 py-1 text-[11px] font-semibold text-white shadow-lg"
           style={{ left: `${(coords[hoverIndex][0] / width) * 100}%` }}
         >
           {formatNaira(points[hoverIndex])} · {hoverIndex === lastIdx ? 'now' : `${lastIdx - hoverIndex}w ago`}

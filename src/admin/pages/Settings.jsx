@@ -425,7 +425,7 @@ export default function Settings() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
-              tab === t.id ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'bg-white text-ink/50 shadow-card dark:bg-[#1a1b20] dark:text-white/50'
+              tab === t.id ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'bg-white text-ink/50 shadow-card dark:bg-[#1a1b20] dark:text-white/50'
             }`}
           >
             <t.icon size={14} /> {t.label}

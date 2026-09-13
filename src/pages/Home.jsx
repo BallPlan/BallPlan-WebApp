@@ -29,10 +29,10 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-5 py-4 text-white"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand px-5 py-4 text-white"
         >
           <div className="flex items-center gap-3">
-            <Wallet size={20} className="text-brand-light" />
+            <Wallet size={20} className="text-white" />
             <div>
               <p className="text-xs text-white/60">Planning with a budget of {formatNaira(budget)}</p>
               <p className="text-sm font-semibold">

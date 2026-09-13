@@ -275,7 +275,7 @@ export default function PlanResult() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => openDirections(venue.address)}
-                className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-black dark:bg-white dark:text-ink dark:hover:bg-white/90"
+                className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-dark"
               >
                 Direction
               </button>
@@ -334,7 +334,7 @@ export default function PlanResult() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAddToCart}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-ink py-3.5 text-sm font-bold text-ink transition hover:bg-ink hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-ink"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-brand py-3.5 text-sm font-bold text-brand transition hover:bg-brand hover:text-white"
               >
                 <ShoppingBag size={16} /> Add to Cart
               </motion.button>

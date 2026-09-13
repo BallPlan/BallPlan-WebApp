@@ -30,7 +30,7 @@ export default function Favorites() {
           <p className="mt-1 text-sm text-ink/50 dark:text-white/50">Tap the heart icon on any place to save it here.</p>
           <button
             onClick={() => navigate('/')}
-            className="mt-6 rounded-full bg-ink px-8 py-3 text-sm font-semibold text-white shadow-card-hover transition hover:bg-black dark:bg-white dark:text-ink dark:hover:bg-white/90"
+            className="mt-6 rounded-full bg-brand px-8 py-3 text-sm font-semibold text-white shadow-card-hover transition hover:bg-brand-dark"
           >
             Explore Venues
           </button>

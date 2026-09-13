@@ -121,7 +121,7 @@ export default function Header() {
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate('/plan-outing')}
-          className="hidden rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-black dark:bg-white dark:text-ink dark:hover:bg-white/90 sm:inline-flex"
+          className="hidden rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark sm:inline-flex"
         >
           Plan an outing
         </motion.button>

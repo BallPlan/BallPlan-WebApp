@@ -143,7 +143,7 @@ export default function Venues() {
           <button
             onClick={() => setView('list')}
             className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-              view === 'list' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'text-ink/40 dark:text-white/40'
+              view === 'list' ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'text-ink/40 dark:text-white/40'
             }`}
             aria-label="List view"
           >
@@ -152,7 +152,7 @@ export default function Venues() {
           <button
             onClick={() => setView('grid')}
             className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
-              view === 'grid' ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'text-ink/40 dark:text-white/40'
+              view === 'grid' ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'text-ink/40 dark:text-white/40'
             }`}
             aria-label="Grid view"
           >

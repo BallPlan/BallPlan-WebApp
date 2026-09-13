@@ -24,7 +24,7 @@ export default function CategoryTabs({ active, onChange }) {
             {isActive && (
               <motion.span
                 layoutId="category-pill"
-                className="absolute inset-0 rounded-full bg-ink dark:bg-white"
+                className="absolute inset-0 rounded-full bg-brand dark:bg-brand"
                 transition={{ type: 'spring', stiffness: 500, damping: 35 }}
               />
             )}

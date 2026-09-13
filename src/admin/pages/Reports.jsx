@@ -66,7 +66,7 @@ export default function Reports() {
               key={f}
               onClick={() => setFilter(f)}
               className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                filter === f ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'bg-white text-ink/50 shadow-card dark:bg-[#1a1b20] dark:text-white/50'
+                filter === f ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'bg-white text-ink/50 shadow-card dark:bg-[#1a1b20] dark:text-white/50'
               }`}
             >
               {f}

@@ -187,7 +187,7 @@ export default function VenueForm() {
       <div className="mb-6 flex items-center gap-3">
         <Link
           to="/venues"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-card transition hover:bg-ink hover:text-white dark:bg-[#1a1b20]"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-card transition hover:bg-brand hover:text-white dark:bg-[#1a1b20]"
         >
           <ArrowLeft size={16} />
         </Link>

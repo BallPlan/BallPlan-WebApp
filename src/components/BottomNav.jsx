@@ -25,7 +25,7 @@ export default function BottomNav() {
             className={({ isActive }) =>
               `flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200 ${
                 isActive
-                  ? 'bg-ink text-white dark:bg-white dark:text-ink'
+                  ? 'bg-brand text-white dark:bg-brand dark:text-white'
                   : 'text-ink/50 hover:bg-ink/5 dark:text-white/50 dark:hover:bg-white/10'
               }`
             }
@@ -39,7 +39,7 @@ export default function BottomNav() {
         <motion.div
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
-          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white shadow-card-hover dark:bg-white dark:text-ink"
+          className="relative flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-card-hover dark:bg-brand dark:text-white"
         >
           <ShoppingCart size={22} />
           <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold leading-none text-white">

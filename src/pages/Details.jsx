@@ -195,7 +195,7 @@ export default function Details() {
           >
             {t}
             {tab === t && (
-              <motion.span layoutId="details-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-ink dark:bg-white" />
+              <motion.span layoutId="details-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-brand dark:bg-brand" />
             )}
           </button>
         ))}

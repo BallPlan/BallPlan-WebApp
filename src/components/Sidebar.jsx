@@ -35,13 +35,13 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-ink text-white dark:bg-white dark:text-ink'
+                  ? 'bg-brand text-white dark:bg-brand dark:text-white'
                   : 'text-ink/50 hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white'
               }`
             }
           >
             <Icon size={20} strokeWidth={2} />
-            <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+            <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
               {label}
             </span>
           </NavLink>
@@ -53,7 +53,7 @@ export default function Sidebar() {
           className={({ isActive }) =>
             `group relative mt-1 flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
               isActive
-                ? 'bg-ink text-white dark:bg-white dark:text-ink'
+                ? 'bg-brand text-white dark:bg-brand dark:text-white'
                 : 'text-ink/50 hover:bg-ink/5 hover:text-ink dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white'
             }`
           }
@@ -64,7 +64,7 @@ export default function Sidebar() {
               {totalItems}
             </span>
           )}
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
             Cart
           </span>
         </NavLink>
@@ -87,7 +87,7 @@ export default function Sidebar() {
           className={({ isActive }) =>
             `flex h-11 w-11 items-center justify-center rounded-full border transition ${
               isActive
-                ? 'border-ink bg-ink text-white dark:border-white dark:bg-white dark:text-ink'
+                ? 'border-brand bg-brand text-white dark:border-brand dark:bg-brand dark:text-white'
                 : 'border-ink/15 text-ink/60 hover:border-ink/30 dark:border-white/15 dark:text-white/60 dark:hover:border-white/30'
             }`
           }

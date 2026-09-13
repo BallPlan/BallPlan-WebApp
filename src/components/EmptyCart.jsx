@@ -37,7 +37,7 @@ export default function EmptyCart() {
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
         onClick={() => navigate('/')}
-        className="mt-6 rounded-full bg-ink px-8 py-3 text-sm font-semibold text-white shadow-card-hover transition hover:bg-black dark:bg-white dark:text-ink dark:hover:bg-white/90"
+        className="mt-6 rounded-full bg-brand px-8 py-3 text-sm font-semibold text-white shadow-card-hover transition hover:bg-brand-dark"
       >
         Browse Products
       </motion.button>

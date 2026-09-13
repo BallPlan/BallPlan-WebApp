@@ -115,7 +115,7 @@ export default function VisitorLineChart({ data, dark, width = 700, height = 240
 
       {hoverIndex != null && data[hoverIndex] && (
         <div
-          className="pointer-events-none absolute top-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white shadow-lg dark:bg-white dark:text-ink"
+          className="pointer-events-none absolute top-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-brand px-2 py-1 text-[11px] font-semibold text-white shadow-lg"
           style={{ left: `${(coords[hoverIndex][0] / width) * 100}%` }}
         >
           {data[hoverIndex].label} · {data[hoverIndex].count.toLocaleString()} visitors

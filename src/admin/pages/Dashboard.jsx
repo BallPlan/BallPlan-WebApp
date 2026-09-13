@@ -101,7 +101,7 @@ export default function Dashboard() {
                   key={r}
                   onClick={() => setRange(r)}
                   className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                    range === r ? 'bg-ink text-white dark:bg-white dark:text-ink' : 'text-ink/50 dark:text-white/50'
+                    range === r ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'text-ink/50 dark:text-white/50'
                   }`}
                 >
                   {r}

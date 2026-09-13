@@ -65,7 +65,7 @@ export default function PlanOuting() {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={handleContinue}
-        className="mt-8 w-full rounded-full bg-ink py-4 text-sm font-bold text-white shadow-card-hover transition hover:bg-black dark:bg-white dark:text-ink dark:hover:bg-white/90"
+        className="mt-8 w-full rounded-full bg-brand py-4 text-sm font-bold text-white shadow-card-hover transition hover:bg-brand-dark"
       >
         Continue
       </motion.button>
