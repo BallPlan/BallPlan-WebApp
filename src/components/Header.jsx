@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, LogOut, User, Sun, Moon } from 'lucide-react';
-import fullLogo from '../assets/full-logo.png';
+import mobileLogo from '../assets/mobile-logo.png';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ImageWithFallback from './ImageWithFallback';
+import ConfirmDialog from './ConfirmDialog';
 import { filterVenues, useVenuesStore } from '../shared/store';
 import { formatNaira } from '../utils/currency';
 
@@ -16,6 +17,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const searchRef = useRef(null);
 
   const venuesSnapshot = useVenuesStore();
@@ -43,7 +45,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-ink/5 bg-cream/90 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#121212]/90 sm:px-6 lg:px-8">
       <Link to="/" className="flex shrink-0 items-center lg:hidden">
-        <img src={fullLogo} alt="BallPlan" className="h-7 w-auto dark:invert dark:hue-rotate-180" />
+        <img src={mobileLogo} alt="BallPlan" className="h-7 w-auto" />
       </Link>
 
       <div ref={searchRef} className="relative hidden flex-1 sm:block sm:max-w-md">
@@ -142,9 +144,8 @@ export default function Header() {
                 </p>
                 <button
                   onClick={() => {
-                    logout();
                     setMenuOpen(false);
-                    navigate('/');
+                    setLogoutConfirmOpen(true);
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-ink hover:bg-cream dark:text-white dark:hover:bg-white/10"
                 >
@@ -165,6 +166,20 @@ export default function Header() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Log out of BallPlan?"
+        description="You'll need to sign in again to access your account."
+        confirmLabel="Yes, log out"
+        cancelLabel="No, stay signed in"
+        onConfirm={() => {
+          logout();
+          setLogoutConfirmOpen(false);
+          navigate('/');
+        }}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
     </header>
   );
 }

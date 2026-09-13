@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Heart, PlusCircle, Bell, ShoppingCart } from 'lucide-react';
+import { Home, Heart, Compass, Bell, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const links = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/favorites', icon: Heart, label: 'Favorites' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/plan-outing', icon: PlusCircle, label: 'Plan an outing' },
+  { to: '/plan-outing', icon: Compass, label: 'Plan an outing' },
 ];
 
 export default function BottomNav() {

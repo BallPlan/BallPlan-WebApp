@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Heart, PlusCircle, Bell, ShoppingCart, User, LogOut } from 'lucide-react';
+import { Home, Heart, Compass, Bell, ShoppingCart, User, LogOut } from 'lucide-react';
 import logoIcon from '../assets/logo-icon.png';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import ConfirmDialog from './ConfirmDialog';
 
 const links = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/favorites', icon: Heart, label: 'Favorites' },
-  { to: '/plan-outing', icon: PlusCircle, label: 'Plan an outing' },
+  { to: '/plan-outing', icon: Compass, label: 'Plan an outing' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ];
 
@@ -15,6 +17,7 @@ export default function Sidebar() {
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   return (
     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-20 flex-col items-center justify-between border-r border-ink/5 bg-cream py-6 dark:border-white/10 dark:bg-[#121212] lg:flex">
@@ -69,10 +72,7 @@ export default function Sidebar() {
 
       {user ? (
         <button
-          onClick={() => {
-            logout();
-            navigate('/');
-          }}
+          onClick={() => setLogoutConfirmOpen(true)}
           aria-label="Sign out"
           title={`Signed in as ${user.email}`}
           className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-brand/30 bg-brand/10 text-brand transition hover:bg-brand hover:text-white"
@@ -95,6 +95,20 @@ export default function Sidebar() {
           <User size={19} />
         </NavLink>
       )}
+
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Log out of BallPlan?"
+        description="You'll need to sign in again to access your account."
+        confirmLabel="Yes, log out"
+        cancelLabel="No, stay signed in"
+        onConfirm={() => {
+          logout();
+          setLogoutConfirmOpen(false);
+          navigate('/');
+        }}
+        onCancel={() => setLogoutConfirmOpen(false)}
+      />
     </aside>
   );
 }
