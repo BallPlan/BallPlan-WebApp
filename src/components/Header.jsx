@@ -46,7 +46,7 @@ export default function Header() {
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-ink/5 bg-cream/90 px-4 py-3 backdrop-blur-md dark:border-white/10 dark:bg-[#121212]/90 sm:px-6 lg:px-8">
       <Link to="/" className="flex shrink-0 items-center gap-1.5 lg:hidden">
         <img src={logoIcon} alt="" className="h-7 w-auto" />
-        <span className="text-lg font-extrabold tracking-tight text-ink dark:text-white">BallPlan</span>
+        <span className="font-display text-lg font-extrabold tracking-tight text-ink dark:text-white">BallPlan</span>
       </Link>
 
       <div ref={searchRef} className="relative hidden flex-1 sm:block sm:max-w-md">
