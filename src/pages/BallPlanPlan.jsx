@@ -12,7 +12,6 @@ export default function BallPlanPlan() {
   const navigate = useNavigate();
   const { notify } = useToast();
 
-  const [min, setMin] = useState('');
   const [max, setMax] = useState('');
   const [location, setLocation] = useState([]);
   const [people, setPeople] = useState(2);
@@ -31,18 +30,14 @@ export default function BallPlanPlan() {
   const handleGenerate = (e) => {
     e.preventDefault();
 
-    if (!min.trim()) return notify('Enter your minimum budget.', 'warning');
-    if (!max.trim()) return notify('Enter your maximum budget.', 'warning');
+    if (!max.trim()) return notify('Enter your budget.', 'warning');
 
-    const minVal = Number(min);
     const maxVal = Number(max);
-    if (maxVal <= 0) return notify('Enter a valid maximum budget.', 'warning');
-    if (minVal > maxVal) return notify('Minimum budget cannot be greater than maximum.', 'warning');
+    if (maxVal <= 0) return notify('Enter a valid budget.', 'warning');
     if (location.length === 0) return notify('Select at least one location.', 'warning');
     if (category.length === 0) return notify('Select at least one category.', 'warning');
 
     console.log('[ballplan-plan] generating with', {
-      minVal,
       maxVal,
       location,
       people,
@@ -53,7 +48,7 @@ export default function BallPlanPlan() {
     setTimeout(() => {
       setGenerating(false);
       navigate('/plan-outing/result', {
-        state: { min: minVal, max: maxVal, location, people, category, info },
+        state: { max: maxVal, location, people, category, info },
       });
     }, 1600);
   };
@@ -72,26 +67,15 @@ export default function BallPlanPlan() {
 
       <form onSubmit={handleGenerate} className="mt-8 space-y-6">
         <div>
-          <label className="mb-2 block text-sm font-semibold text-ink/70 dark:text-white/70">Tell us your budget range</label>
-          <div className="space-y-3">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/40 dark:text-white/40">₦</span>
-              <input
-                {...integerInputProps(min, setMin)}
-                placeholder="10000"
-                className="w-full rounded-2xl border border-transparent bg-white py-3.5 pl-8 pr-16 text-sm text-ink shadow-card outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:bg-[#1c1c1e] dark:text-white"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-ink/40">Min.</span>
-            </div>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/40 dark:text-white/40">₦</span>
-              <input
-                {...integerInputProps(max, setMax)}
-                placeholder="50000"
-                className="w-full rounded-2xl border border-transparent bg-white py-3.5 pl-8 pr-16 text-sm text-ink shadow-card outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:bg-[#1c1c1e] dark:text-white"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-ink/40">Max.</span>
-            </div>
+          <label className="mb-2 block text-sm font-semibold text-ink/70 dark:text-white/70">Tell us your budget</label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/40 dark:text-white/40">₦</span>
+            <input
+              {...integerInputProps(max, setMax)}
+              placeholder="50000"
+              className="w-full rounded-2xl border border-transparent bg-white py-3.5 pl-8 pr-16 text-sm text-ink shadow-card outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:bg-[#1c1c1e] dark:text-white"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-medium text-ink/40">Max.</span>
           </div>
         </div>
 
