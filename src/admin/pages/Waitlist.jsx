@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, Download, Search } from 'lucide-react';
 import StatCard from '../components/StatCard';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../../context/ToastContext';
 
 function toCsv(rows) {

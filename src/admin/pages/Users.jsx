@@ -4,7 +4,7 @@ import ActionMenu from '../components/ActionMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import StatCard from '../components/StatCard';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../../context/ToastContext';
 
 function displayName(row) {
