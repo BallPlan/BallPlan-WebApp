@@ -1,8 +1,9 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { useLocalStorage } from '../utils/useLocalStorage';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
+const GUEST_CART_KEY = 'ballplan_cart_guest';
 
 export function CartProvider({ children }) {
   const { user } = useAuth();
@@ -10,6 +11,41 @@ export function CartProvider({ children }) {
   // one person's cart to another — falls back to a shared guest cart when
   // signed out.
   const [items, setItems] = useLocalStorage(`ballplan_cart_${user?.id || 'guest'}`, []);
+  const prevUserRef = useRef(user);
+
+  // On the transition from browsing as a guest to being signed in (sign up
+  // or sign in), fold whatever was in the guest cart into the account's
+  // cart instead of leaving it stranded under the old guest key.
+  useEffect(() => {
+    const hadNoUser = !prevUserRef.current;
+    prevUserRef.current = user;
+    if (!hadNoUser || !user) return;
+
+    let guestItems = [];
+    try {
+      const raw = window.localStorage.getItem(GUEST_CART_KEY);
+      guestItems = raw ? JSON.parse(raw) : [];
+    } catch {
+      guestItems = [];
+    }
+    if (guestItems.length === 0) return;
+
+    setItems((prev) => {
+      const merged = [...prev];
+      guestItems.forEach((guestItem) => {
+        const idx = merged.findIndex((i) => i.key === guestItem.key);
+        if (idx >= 0) merged[idx] = { ...merged[idx], qty: merged[idx].qty + guestItem.qty };
+        else merged.push(guestItem);
+      });
+      return merged;
+    });
+    try {
+      window.localStorage.removeItem(GUEST_CART_KEY);
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const addItem = (venue, item, kind = 'menu') => {
     const key = `${venue.id}:${item.id}`;

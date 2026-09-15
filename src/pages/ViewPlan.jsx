@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Trash2, MapPin, Tag, Store, Download, Loader2, Bookmark, Save } from 'lucide-react';
 import ImageWithFallback from '../components/ImageWithFallback';
@@ -9,10 +8,10 @@ import BackButton from '../components/BackButton';
 import SavedPlansModal from '../components/SavedPlansModal';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useSavedPlans } from '../context/SavedPlansContext';
 import { useToast } from '../context/ToastContext';
 import { formatNaira } from '../utils/currency';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
-import { supabase } from '../lib/supabaseClient';
 
 const GROUPINGS = [
   { key: 'venueName', label: 'Venue', icon: Store },
@@ -23,8 +22,8 @@ const GROUPINGS = [
 export default function ViewPlan() {
   const { items, updateQty, removeItem, totalPrice, totalItems } = useCart();
   const { user } = useAuth();
+  const { savePlan } = useSavedPlans();
   const { notify } = useToast();
-  const navigate = useNavigate();
   const [groupBy, setGroupBy] = useState('venueName');
   const [downloading, setDownloading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -66,27 +65,20 @@ export default function ViewPlan() {
   };
 
   const handleSavePlan = async () => {
-    if (!user) {
-      notify('Sign in to save your plan.', 'warning');
-      navigate('/signin');
-      return;
-    }
     setSaving(true);
-    const uniqueVenues = Array.from(new Set(items.map((i) => i.venueName)));
-    const name = uniqueVenues.length <= 2 ? uniqueVenues.join(' & ') : `${uniqueVenues[0]} + ${uniqueVenues.length - 1} more`;
-    const { error } = await supabase.from('saved_plans').insert({
-      user_id: user.id,
-      name,
-      items,
-      item_count: totalItems,
-      total_price: totalPrice,
-    });
-    setSaving(false);
-    if (error) {
+    try {
+      const name = await savePlan({ items, itemCount: totalItems, totalPrice });
+      notify(
+        user
+          ? `"${name}" saved — find it via the bookmark icon.`
+          : `"${name}" saved on this device — sign up to keep it on your account.`,
+        'success',
+      );
+    } catch {
       notify('Could not save your plan.', 'warning');
-      return;
+    } finally {
+      setSaving(false);
     }
-    notify('Plan saved — find it via the bookmark icon.', 'success');
   };
 
   return (

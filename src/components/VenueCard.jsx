@@ -5,23 +5,14 @@ import ImageWithFallback from './ImageWithFallback';
 import RatingBadge from './RatingBadge';
 import { formatNaira } from '../utils/currency';
 import { useFavorites } from '../context/FavoritesContext';
-import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
 
 export default function VenueCard({ venue, index = 0 }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { notify } = useToast();
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(venue.id);
 
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
-    if (!user) {
-      notify('Sign in to save favorites.', 'warning');
-      navigate('/signin');
-      return;
-    }
     toggleFavorite(venue.id);
   };
 

@@ -21,7 +21,6 @@ import { useFavorites } from '../context/FavoritesContext';
 import { useBudgetAwareCart } from '../utils/useBudgetAwareCart';
 import { useToast } from '../context/ToastContext';
 import { useReviews } from '../context/ReviewsContext';
-import { useAuth } from '../context/AuthContext';
 
 export default function Details() {
   const { id } = useParams();
@@ -41,14 +40,8 @@ export default function Details() {
   const { isInCart, addWithinBudget } = useBudgetAwareCart();
   const { notify } = useToast();
   const { getReviews, getSummary, deleteReview } = useReviews();
-  const { user } = useAuth();
 
   const handleToggleFavorite = () => {
-    if (!user) {
-      notify('Sign in to save favorites.', 'warning');
-      navigate('/signin');
-      return;
-    }
     toggleFavorite(venue.id);
   };
 

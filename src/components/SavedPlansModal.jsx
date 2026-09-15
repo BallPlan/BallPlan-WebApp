@@ -1,36 +1,14 @@
-import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Bookmark, Trash2, FolderOpen, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 import { formatNaira } from '../utils/currency';
 import { useCart } from '../context/CartContext';
+import { useSavedPlans } from '../context/SavedPlansContext';
 import { useToast } from '../context/ToastContext';
 
 export default function SavedPlansModal({ open, onClose }) {
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { plans, loading, deletePlan } = useSavedPlans();
   const { loadItems } = useCart();
   const { notify } = useToast();
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoading(true);
-    supabase
-      .from('saved_plans')
-      .select('id, name, item_count, total_price, created_at, items')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) notify('Could not load your saved plans.', 'warning');
-        setPlans(data || []);
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const handleLoad = (plan) => {
     loadItems(plan.items);
@@ -39,12 +17,7 @@ export default function SavedPlansModal({ open, onClose }) {
   };
 
   const handleDelete = async (plan) => {
-    const { error } = await supabase.from('saved_plans').delete().eq('id', plan.id);
-    if (error) {
-      notify('Could not delete this plan.', 'warning');
-      return;
-    }
-    setPlans((prev) => prev.filter((p) => p.id !== plan.id));
+    await deletePlan(plan);
     notify('Saved plan deleted.', 'info');
   };
 
