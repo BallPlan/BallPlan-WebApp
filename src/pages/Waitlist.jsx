@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Share2, Wallet, Compass, ShieldCheck, Star, Loader2, ArrowRight } from 'lucide-react';
 import logoIcon from '../assets/logo-icon.png';
@@ -106,10 +105,10 @@ export default function Waitlist() {
 
       {/* Nav */}
       <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-10">
-        <Link to="/" className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <img src={logoIcon} alt="" className="h-8 w-auto" />
           <span className="font-display text-lg font-extrabold text-ink dark:text-white">BallPlan</span>
-        </Link>
+        </div>
       </header>
 
       {/* Hero */}
@@ -328,10 +327,10 @@ export default function Waitlist() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-ink/8 px-6 py-10 dark:border-white/10">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <Link to="/" className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <img src={logoIcon} alt="" className="h-6 w-auto" />
             <span className="font-display text-sm font-extrabold text-ink dark:text-white">BallPlan</span>
-          </Link>
+          </div>
           <div className="flex items-center gap-4 text-ink/40 dark:text-white/40">
             <a href="#" aria-label="Instagram" className="transition hover:text-brand">
               <InstagramIcon size={17} />
