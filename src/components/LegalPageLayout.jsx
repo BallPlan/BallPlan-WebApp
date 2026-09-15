@@ -27,8 +27,8 @@ export default function LegalPageLayout({ title, updated, children }) {
 
         <div className="mt-16 rounded-2xl bg-white p-6 text-sm text-ink/60 shadow-card dark:bg-[#1c1c1e] dark:text-white/60">
           Questions about this document? Reach us at{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>
           .
         </div>

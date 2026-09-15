@@ -71,19 +71,11 @@ export default function Privacy() {
 
       <LegalSection title="5. Third-Party Service Providers">
         <p>
-          We share personal data with a limited number of service providers who process it on our behalf, under
-          contractual obligations to protect it and use it only for the purposes we specify:
+          We share personal data with a limited number of service providers who process it on our behalf — for
+          example, to host our infrastructure and to deliver transactional emails such as verification codes and
+          password-reset messages — under contractual obligations to protect it and use it only for the purposes we
+          specify.
         </p>
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li>
-            <span className="font-semibold text-ink dark:text-white">Supabase</span> — provides our database,
-            authentication, and file storage infrastructure.
-          </li>
-          <li>
-            <span className="font-semibold text-ink dark:text-white">Brevo</span> — delivers transactional emails
-            such as verification codes and password-reset messages.
-          </li>
-        </ul>
         <p>We do not sell your personal data to anyone, for any purpose.</p>
       </LegalSection>
 
@@ -126,8 +118,8 @@ export default function Privacy() {
         </ul>
         <p>
           To exercise any of these rights, contact us at{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>
           . We will respond within the timeframe required by applicable law.
         </p>
@@ -166,8 +158,8 @@ export default function Privacy() {
       <LegalSection title="14. Contact Us">
         <p>
           For any questions about this Privacy Policy or how we handle your personal data, contact us at{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>
           .
         </p>

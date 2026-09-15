@@ -34,8 +34,8 @@ export default function Terms() {
           account. By registering, you confirm that the information you provide is accurate and that you will keep
           it up to date. You are responsible for maintaining the confidentiality of your password and for all
           activity that occurs under your account. Notify us immediately at{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>{' '}
           if you suspect unauthorized use of your account.
         </p>
@@ -140,8 +140,8 @@ export default function Terms() {
           principles. Any dispute arising out of or relating to these Terms or the Service will be subject to the
           exclusive jurisdiction of the courts sitting in Lagos State, Nigeria. Before filing a claim, you agree to
           first contact us at{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>{' '}
           so we can try to resolve the matter informally.
         </p>
@@ -158,8 +158,8 @@ export default function Terms() {
       <LegalSection title="15. Contact Us">
         <p>
           Questions about these Terms can be sent to{' '}
-          <a href="mailto:hello@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
-            hello@ballplan.net
+          <a href="mailto:info@ballplan.net" className="font-semibold text-brand hover:text-brand-dark">
+            info@ballplan.net
           </a>
           .
         </p>
