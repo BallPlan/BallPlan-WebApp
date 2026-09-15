@@ -11,17 +11,20 @@ export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
   const { user, loading, updatePassword, logout } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
 
   // This page only makes sense right after Verify establishes a recovery
-  // session — without one there's nothing to reset.
+  // session — without one there's nothing to reset. Skipped once we've
+  // succeeded: logging out on submit also clears `user`, and without this
+  // guard that would immediately redirect here instead of to /signin.
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !success) {
       navigate('/forgot-password', { replace: true });
     }
-  }, [loading, user, navigate]);
+  }, [loading, user, success, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +41,7 @@ export default function ResetPassword() {
     setSaving(true);
     try {
       await updatePassword(password);
+      setSuccess(true);
       await logout();
       notify('Password updated — sign in with your new password.', 'success');
       navigate('/signin');
@@ -48,7 +52,7 @@ export default function ResetPassword() {
     }
   };
 
-  if (loading || !user) return null;
+  if (loading || (!user && !success)) return null;
 
   return (
     <AuthShell title="Reset Your Password" subtitle="Choose a new password for your BallPlan account.">

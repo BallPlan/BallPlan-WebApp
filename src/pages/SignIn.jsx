@@ -42,8 +42,8 @@ export default function SignIn() {
       footer={
         <>
           By proceeding, you agree to creating a BallPlan account subject to our{' '}
-          <span className="underline">Terms of Service</span> and{' '}
-          <span className="underline">Privacy Policy</span>.
+          <Link to="/terms" className="underline hover:text-brand">Terms of Service</Link> and{' '}
+          <Link to="/privacy" className="underline hover:text-brand">Privacy Policy</Link>.
         </>
       }
     >

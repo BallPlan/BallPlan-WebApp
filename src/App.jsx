@@ -24,6 +24,8 @@ import SignUp from './pages/SignUp';
 import Verify from './pages/Verify';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 export default function App() {
   return (
@@ -41,6 +43,8 @@ export default function App() {
                       <Route path="/verify" element={<Verify />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/privacy" element={<Privacy />} />
 
                       <Route element={<Layout />}>
                         <Route path="/" element={<Home />} />

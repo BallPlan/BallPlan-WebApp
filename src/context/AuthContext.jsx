@@ -28,9 +28,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Creates the account and triggers a 6-digit confirmation code email.
+  // Supabase returns 200 with an empty identities array (rather than an
+  // error) when the email is already registered, to avoid leaking which
+  // emails exist — this is the documented way to detect that case.
   const signUp = async (email, password) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
+    if (data?.user?.identities?.length === 0) {
+      const err = new Error('An account with this email already exists — sign in instead.');
+      err.code = 'user_already_exists';
+      throw err;
+    }
   };
 
   // Confirms a new signup with the code from that email — establishes a session.
