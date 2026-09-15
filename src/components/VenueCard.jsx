@@ -5,11 +5,25 @@ import ImageWithFallback from './ImageWithFallback';
 import RatingBadge from './RatingBadge';
 import { formatNaira } from '../utils/currency';
 import { useFavorites } from '../context/FavoritesContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function VenueCard({ venue, index = 0 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { notify } = useToast();
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(venue.id);
+
+  const handleToggleFavorite = (e) => {
+    e.stopPropagation();
+    if (!user) {
+      notify('Sign in to save favorites.', 'warning');
+      navigate('/signin');
+      return;
+    }
+    toggleFavorite(venue.id);
+  };
 
   return (
     <motion.article
@@ -30,10 +44,7 @@ export default function VenueCard({ venue, index = 0 }) {
         />
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleFavorite(venue.id);
-          }}
+          onClick={handleToggleFavorite}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition-transform hover:scale-110 active:scale-90"
           aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
         >

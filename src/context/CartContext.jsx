@@ -1,10 +1,15 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useLocalStorage } from '../utils/useLocalStorage';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
-  const [items, setItems] = useLocalStorage('ballplan_cart', []);
+  const { user } = useAuth();
+  // Keyed per-account so switching users on the same browser doesn't show
+  // one person's cart to another — falls back to a shared guest cart when
+  // signed out.
+  const [items, setItems] = useLocalStorage(`ballplan_cart_${user?.id || 'guest'}`, []);
 
   const addItem = (venue, item, kind = 'menu') => {
     const key = `${venue.id}:${item.id}`;

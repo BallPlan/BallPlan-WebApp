@@ -8,23 +8,48 @@ function toDisplayUser(user) {
   return { ...user, name: user.user_metadata?.name || user.email.split('@')[0] };
 }
 
+// Staff (agent/owner) accounts belong to the admin dashboard, not the
+// customer app — same auth.users table, but this app should refuse them.
+async function isStaffAccount(userId) {
+  const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
+  return !!data && (data.role === 'agent' || data.role === 'owner');
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
+    // Also enforced here (not just in signIn) so a staff session established
+    // before this check existed, or restored from a stale cookie, still
+    // gets signed out of the customer app rather than silently working.
+    async function applySession(nextUser) {
+      if (nextUser && (await isStaffAccount(nextUser.id))) {
+        await supabase.auth.signOut();
+        if (active) setUser(null);
+        return;
+      }
+      if (active) setUser(nextUser);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      applySession(session?.user ?? null).finally(() => {
+        if (active) setLoading(false);
+      });
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      applySession(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Creates the account and triggers a 6-digit confirmation code email.
@@ -52,6 +77,14 @@ export function AuthProvider({ children }) {
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+
+    if (await isStaffAccount(data.user.id)) {
+      await supabase.auth.signOut();
+      const err = new Error('This is a staff account — sign in at the admin dashboard instead.');
+      err.code = 'staff_account';
+      throw err;
+    }
+
     setUser(data.user);
     return data.user;
   };

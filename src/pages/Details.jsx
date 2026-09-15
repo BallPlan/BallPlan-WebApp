@@ -21,6 +21,7 @@ import { useFavorites } from '../context/FavoritesContext';
 import { useBudgetAwareCart } from '../utils/useBudgetAwareCart';
 import { useToast } from '../context/ToastContext';
 import { useReviews } from '../context/ReviewsContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Details() {
   const { id } = useParams();
@@ -40,6 +41,16 @@ export default function Details() {
   const { isInCart, addWithinBudget } = useBudgetAwareCart();
   const { notify } = useToast();
   const { getReviews, getSummary, deleteReview } = useReviews();
+  const { user } = useAuth();
+
+  const handleToggleFavorite = () => {
+    if (!user) {
+      notify('Sign in to save favorites.', 'warning');
+      navigate('/signin');
+      return;
+    }
+    toggleFavorite(venue.id);
+  };
 
   const tabs = useMemo(() => {
     const list = [];
@@ -94,7 +105,7 @@ export default function Details() {
             </button>
           )}
           <button
-            onClick={() => toggleFavorite(venue.id)}
+            onClick={handleToggleFavorite}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-110"
             aria-label="Toggle favorite"
           >
