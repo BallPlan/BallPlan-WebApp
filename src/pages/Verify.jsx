@@ -5,14 +5,26 @@ import AuthShell from '../components/AuthShell';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
+const COPY = {
+  signup: {
+    title: 'Sign Up for BallPlan',
+    subtitle: 'Verify your email to finish creating your account.',
+  },
+  recovery: {
+    title: 'Reset Your Password',
+    subtitle: 'Enter the code we sent you to continue resetting your password.',
+  },
+};
+
 export default function Verify() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { verifyCode } = useAuth();
+  const { verifySignup, verifyRecovery } = useAuth();
   const { notify } = useToast();
 
   const email = location.state?.email;
-  const mode = location.state?.mode || 'signin';
+  const mode = location.state?.mode === 'recovery' ? 'recovery' : 'signup';
+  const copy = COPY[mode];
 
   const [digits, setDigits] = useState(Array(6).fill(''));
   const [verifying, setVerifying] = useState(false);
@@ -20,9 +32,10 @@ export default function Verify() {
 
   useEffect(() => {
     if (!email) {
-      navigate('/signin', { replace: true });
+      navigate(mode === 'recovery' ? '/forgot-password' : '/signup', { replace: true });
     }
-  }, [email, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
 
   useEffect(() => {
     inputsRef.current[0]?.focus();
@@ -34,12 +47,19 @@ export default function Verify() {
     if (!complete || verifying) return;
     let cancelled = false;
     setVerifying(true);
+    const code = digits.join('');
 
-    verifyCode(email, digits.join(''))
+    const run = mode === 'recovery' ? verifyRecovery(email, code) : verifySignup(email, code);
+
+    run
       .then((user) => {
         if (cancelled) return;
-        notify(`Welcome to BallPlan, ${(user.user_metadata?.name || email.split('@')[0])}!`, 'success');
-        navigate('/');
+        if (mode === 'recovery') {
+          navigate('/reset-password');
+        } else {
+          notify(`Welcome to BallPlan, ${user.user_metadata?.name || email.split('@')[0]}!`, 'success');
+          navigate('/');
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -89,8 +109,8 @@ export default function Verify() {
 
   return (
     <AuthShell
-      title={mode === 'signup' ? 'Sign Up for BallPlan' : 'Sign In for BallPlan'}
-      subtitle={mode === 'signup' ? 'Verify your email to finish creating your account.' : 'Sign in to BallPlan using your BallPlan account.'}
+      title={copy.title}
+      subtitle={copy.subtitle}
       footer={
         <>
           By proceeding, you agree to creating a BallPlan account subject to our{' '}
@@ -100,7 +120,7 @@ export default function Verify() {
       }
     >
       <p className="mb-6 text-sm text-ink/60 dark:text-white/60">
-        If you have a BallPlan account, we sent a code to <span className="font-semibold text-ink dark:text-white">{email}</span>.
+        We sent a code to <span className="font-semibold text-ink dark:text-white">{email}</span>.
       </p>
 
       <div className="mb-6 flex justify-center gap-2.5" onPaste={handlePaste}>
@@ -127,29 +147,20 @@ export default function Verify() {
 
       <button
         type="button"
-        onClick={() => navigate(mode === 'signup' ? '/signup' : '/signin')}
+        onClick={() => navigate(mode === 'recovery' ? '/forgot-password' : '/signup')}
         className="w-full rounded-xl border border-brand/40 py-3.5 text-sm font-semibold text-brand transition hover:bg-brand/5"
       >
         Use a Different Email
       </button>
 
-      <p className="mt-8 text-sm text-ink/60 dark:text-white/60">
-        {mode === 'signup' ? (
-          <>
-            Already verified before?{' '}
-            <button onClick={() => navigate('/signin')} className="font-semibold text-brand hover:text-brand-dark">
-              try signing in instead.
-            </button>
-          </>
-        ) : (
-          <>
-            Don't have an account yet? If you're still waiting on your code{' '}
-            <button onClick={() => navigate('/signup')} className="font-semibold text-brand hover:text-brand-dark">
-              try signing up instead.
-            </button>
-          </>
-        )}
-      </p>
+      {mode === 'signup' && (
+        <p className="mt-8 text-sm text-ink/60 dark:text-white/60">
+          Already verified before?{' '}
+          <button onClick={() => navigate('/signin')} className="font-semibold text-brand hover:text-brand-dark">
+            try signing in instead.
+          </button>
+        </p>
+      )}
     </AuthShell>
   );
 }

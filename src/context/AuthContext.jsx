@@ -27,28 +27,63 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sends a 6-digit email code. allowSignup=false for sign-in (won't
-  // silently create an account for an email that isn't registered yet),
-  // true for sign-up.
-  const sendCode = async (email, allowSignup) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: allowSignup },
-    });
+  // Creates the account and triggers a 6-digit confirmation code email.
+  const signUp = async (email, password) => {
+    const { error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
   };
 
-  const verifyCode = async (email, token) => {
-    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  // Confirms a new signup with the code from that email — establishes a session.
+  const verifySignup = async (email, token) => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
     if (error) throw error;
     setUser(data.user);
     return data.user;
   };
 
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    setUser(data.user);
+    return data.user;
+  };
+
+  // Sends a 6-digit password-reset code. Supabase returns success even for
+  // an email with no account, so this never reveals whether one exists.
+  const requestPasswordReset = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+  };
+
+  // Confirms the reset code — establishes a session just for changing the password.
+  const verifyRecovery = async (email, token) => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+    if (error) throw error;
+    setUser(data.user);
+    return data.user;
+  };
+
+  const updatePassword = async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  };
+
   const logout = () => supabase.auth.signOut();
 
   return (
-    <AuthContext.Provider value={{ user: toDisplayUser(user), loading, sendCode, verifyCode, logout }}>
+    <AuthContext.Provider
+      value={{
+        user: toDisplayUser(user),
+        loading,
+        signUp,
+        verifySignup,
+        signIn,
+        requestPasswordReset,
+        verifyRecovery,
+        updatePassword,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

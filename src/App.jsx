@@ -22,6 +22,8 @@ import ViewPlan from './pages/ViewPlan';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Verify from './pages/Verify';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 export default function App() {
   return (
@@ -37,6 +39,8 @@ export default function App() {
                       <Route path="/signin" element={<SignIn />} />
                       <Route path="/signup" element={<SignUp />} />
                       <Route path="/verify" element={<Verify />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
 
                       <Route element={<Layout />}>
                         <Route path="/" element={<Home />} />
