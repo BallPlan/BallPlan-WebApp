@@ -7,8 +7,6 @@ import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
 import { InstagramIcon, XIcon, LinkedinIcon } from '../components/SocialIcons';
 
-const STORAGE_KEY = 'ballplan_waitlist';
-
 const img = (id, w = 800) => `https://images.unsplash.com/${id}?w=${w}&q=70&auto=format&fit=crop`;
 
 // Same photo set already used for real venues elsewhere in the app —
@@ -51,21 +49,13 @@ export default function Waitlist() {
   const [position, setPosition] = useState(null);
   const [totalCount, setTotalCount] = useState(500);
 
+  // Deliberately not persisted across reloads — refreshing gives a clean
+  // form again so someone can drop a second email (e.g. for a friend)
+  // without the page assuming it's still them.
   useEffect(() => {
     supabase.rpc('get_waitlist_count').then(({ data }) => {
       if (typeof data === 'number') setTotalCount(Math.max(500, data));
     });
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        setEmail(saved.email || '');
-        setPosition(saved.position ?? null);
-        setJoined(true);
-      }
-    } catch {
-      // ignore
-    }
   }, []);
 
   const handleSubmit = async (e) => {
@@ -83,11 +73,6 @@ export default function Waitlist() {
 
       const { data: count } = await supabase.rpc('get_waitlist_count');
       const pos = 200 + (typeof count === 'number' ? count : 0);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ email: normalized, position: pos }));
-      } catch {
-        // ignore
-      }
       setPosition(pos);
       setJoined(true);
     } catch (err) {
@@ -118,9 +103,6 @@ export default function Waitlist() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream dark:bg-[#121212]">
-      {/* Ambient background blobs */}
-      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand/20 blur-[100px] dark:bg-brand/10" />
-      <div className="pointer-events-none absolute -right-24 top-64 h-80 w-80 rounded-full bg-brand-light/25 blur-[100px] dark:bg-brand-light/10" />
 
       {/* Nav */}
       <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-10">
@@ -143,7 +125,7 @@ export default function Waitlist() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
             </span>
-            Launching soon in Lagos
+            Launching soon
           </motion.span>
 
           {joined ? (
@@ -247,8 +229,8 @@ export default function Waitlist() {
                   ))}
                 </div>
                 <p className="text-sm text-ink/55 dark:text-white/55">
-                  <span className="font-bold text-ink dark:text-white">{totalCount.toLocaleString()}+</span> already
-                  waiting
+                  Join <span className="font-bold text-ink dark:text-white">{totalCount.toLocaleString()}+</span>{' '}
+                  people already waiting
                 </p>
               </motion.div>
             </>
