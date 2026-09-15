@@ -12,6 +12,7 @@ import VenueForm from './pages/VenueForm';
 import AdminVenueDetails from './pages/AdminVenueDetails';
 import Users from './pages/Users';
 import Reviews from './pages/Reviews';
+import Waitlist from './pages/Waitlist';
 import NotificationsPage from './pages/NotificationsPage';
 import Categories from './pages/Categories';
 import Reports from './pages/Reports';
@@ -55,6 +56,7 @@ export default function AdminApp() {
               <Route path="/venues/:id/edit" element={<VenueForm />} />
               <Route path="/users" element={<Users />} />
               <Route path="/reviews" element={<Reviews />} />
+              <Route path="/waitlist" element={<Waitlist />} />
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/reports" element={<Reports />} />

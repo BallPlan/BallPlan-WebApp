@@ -13,6 +13,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   X,
+  ClipboardList,
 } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
 import { useReportsStore, getReports } from '../../shared/store';
@@ -22,6 +23,7 @@ const LINKS = [
   { to: '/users', icon: Users, label: 'Users' },
   { to: '/venues', icon: Store, label: 'Venues' },
   { to: '/reviews', icon: Star, label: 'Reviews' },
+  { to: '/waitlist', icon: ClipboardList, label: 'Waitlist' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/categories', icon: Tag, label: 'Categories' },
   { to: '/reports', icon: Flag, label: 'Reports' },

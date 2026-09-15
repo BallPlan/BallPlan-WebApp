@@ -27,6 +27,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import Waitlist from './pages/Waitlist';
 
 export default function App() {
   return (
@@ -47,6 +48,7 @@ export default function App() {
                         <Route path="/reset-password" element={<ResetPassword />} />
                         <Route path="/terms" element={<Terms />} />
                         <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/waitlist" element={<Waitlist />} />
 
                         <Route element={<Layout />}>
                           <Route path="/" element={<Home />} />
