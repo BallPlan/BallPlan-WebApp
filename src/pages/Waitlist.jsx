@@ -8,13 +8,14 @@ import { InstagramIcon, XIcon, LinkedinIcon } from '../components/SocialIcons';
 
 const img = (id, w = 800) => `https://images.unsplash.com/${id}?w=${w}&q=70&auto=format&fit=crop`;
 
-// Same photo set already used for real venues elsewhere in the app —
-// keeps the waitlist page visually consistent with the actual product.
+// Actual hero images of real venues now live in the app (RSVP, Elegushi
+// Beach, Eko Hotel & Suites, Mood Rooftop) — keeps the waitlist page an
+// honest preview of the real product, not generic stock.
 const COLLAGE = [
-  { src: img('photo-1517248135467-4c7edcad34c4'), className: 'col-span-2 row-span-2' },
+  { src: img('photo-1544025162-d76694265947'), className: 'col-span-2 row-span-2' },
   { src: img('photo-1519046904884-53103b34b206'), className: '' },
-  { src: img('photo-1552566626-52f8b828add9'), className: '' },
-  { src: img('photo-1551882547-ff40c63fe5fa'), className: 'col-span-2' },
+  { src: img('photo-1566073771259-6a8506099945'), className: '' },
+  { src: img('photo-1514933651103-005eec06c04b'), className: 'col-span-2' },
 ];
 
 const EXPECT_CARDS = [
