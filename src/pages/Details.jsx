@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Star, Phone, MapPin, Clock, Play, ChevronDown, ExternalLink, MessageSquarePlus } from 'lucide-react';
-import { useVenuesStore, getVenueById, usePriceOverridesStore, getEffectivePrice } from '../shared/store';
+import { useVenuesStore, getVenueById } from '../lib/venuesData';
+import { usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import BackButton from '../components/BackButton';
 import Lightbox from '../components/Lightbox';
@@ -181,7 +182,6 @@ export default function Details() {
               <span className="text-sm font-medium text-ink/40 dark:text-white/40">({reviewSummary.count})</span>
             )}
           </div>
-          <span className="text-xs text-ink/40 dark:text-white/40 lg:hidden">{venue.distanceKm} km away</span>
         </button>
       </div>
 

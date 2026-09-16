@@ -4,7 +4,7 @@ import { HeartOff } from 'lucide-react';
 import VenueCard from '../components/VenueCard';
 import BackButton from '../components/BackButton';
 import { useFavorites } from '../context/FavoritesContext';
-import { useVenuesStore, getVenues } from '../shared/store';
+import { useVenuesStore, getVenues } from '../lib/venuesData';
 
 export default function Favorites() {
   const { favoriteIds } = useFavorites();

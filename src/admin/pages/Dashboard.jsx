@@ -2,11 +2,8 @@ import { useMemo, useState } from 'react';
 import { Store, UtensilsCrossed, Tag, Flag, Activity } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import VisitorLineChart from '../components/VisitorLineChart';
+import { useVenuesStore, getVenues, useCategoriesStore, getCategories } from '../lib/venuesData';
 import {
-  useVenuesStore,
-  getVenues,
-  useCategoriesStore,
-  getCategories,
   useReportsStore,
   getReports,
   useActivityStore,

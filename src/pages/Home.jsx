@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Wallet, X } from 'lucide-react';
 import CategoryTabs from '../components/CategoryTabs';
 import VenueCard from '../components/VenueCard';
-import { useVenuesStore, getPublishedVenues } from '../shared/store';
+import { useVenuesStore, getPublishedVenues } from '../lib/venuesData';
 import { formatNaira } from '../utils/currency';
 import { useBudget } from '../context/BudgetContext';
 import { useCart } from '../context/CartContext';

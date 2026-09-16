@@ -31,8 +31,8 @@ export default function EmptyCart() {
         <circle cx="50" cy="92" r="8" className="stroke-ink dark:stroke-white" strokeWidth="3" />
         <circle cx="82" cy="92" r="8" className="stroke-ink dark:stroke-white" strokeWidth="3" />
       </motion.svg>
-      <h3 className="mt-6 text-xl font-bold text-ink dark:text-white">Your Cart is Empty!</h3>
-      <p className="mt-1 text-sm text-ink/50 dark:text-white/50">It looks like you haven't added any items to your cart yet.</p>
+      <h3 className="mt-6 text-xl font-bold text-ink dark:text-white">Your plan is empty!</h3>
+      <p className="mt-1 text-sm text-ink/50 dark:text-white/50">It looks like you haven't added any items to your plan yet.</p>
       <motion.button
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}

@@ -42,7 +42,7 @@ export default function Privacy() {
           <li>
             <span className="font-semibold text-ink dark:text-white">Cookies and local storage</span> — small
             pieces of data stored in your browser to keep you signed in, remember preferences like your budget cap
-            or dark-mode setting, and maintain your cart.
+            or dark-mode setting, and maintain your plan.
           </li>
         </ul>
         <p>We do not collect payment card information — BallPlan does not process payments.</p>
@@ -82,7 +82,7 @@ export default function Privacy() {
       <LegalSection title="6. Cookies and Local Storage">
         <p>
           We use strictly necessary cookies and browser local storage to keep you signed in and to remember
-          in-session choices like your cart, favorites, and theme. You can clear these at any time through your
+          in-session choices like your plan, favorites, and theme. You can clear these at any time through your
           browser settings, though doing so may sign you out or reset saved preferences.
         </p>
       </LegalSection>

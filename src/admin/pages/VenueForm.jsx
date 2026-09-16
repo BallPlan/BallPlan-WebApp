@@ -8,7 +8,7 @@ import {
   updateVenue,
   useCategoriesStore,
   getCategories,
-} from '../../shared/store';
+} from '../lib/venuesData';
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
 import MediaInput from '../components/MediaInput';
@@ -21,7 +21,6 @@ const emptyVenue = {
   address: '',
   phone: '',
   rating: '4.5',
-  distanceKm: '2',
   openTime: '9:00 AM',
   closeTime: '10:00 PM',
   description: '',
@@ -126,7 +125,6 @@ export default function VenueForm() {
           ...emptyVenue,
           ...existing,
           rating: String(existing.rating),
-          distanceKm: String(existing.distanceKm),
           fromPrice: String(existing.fromPrice),
         });
       }
@@ -152,7 +150,7 @@ export default function VenueForm() {
   const addFee = () => set({ hiddenFees: [...venue.hiddenFees, { label: '', amount: '' }] });
   const removeFee = (i) => set({ hiddenFees: venue.hiddenFees.filter((_, idx) => idx !== i) });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!venue.name.trim() || !venue.tab) {
       notify('Name and category are required.', 'warning');
@@ -161,7 +159,6 @@ export default function VenueForm() {
     const payload = {
       ...venue,
       rating: Number(venue.rating) || 0,
-      distanceKm: Number(venue.distanceKm) || 0,
       fromPrice: Number(venue.fromPrice) || 0,
       gallery: venue.gallery.filter(Boolean),
       hero: venue.hero || venue.gallery[0] || '',
@@ -172,14 +169,18 @@ export default function VenueForm() {
         .map((f) => ({ label: f.label, amount: Number(f.amount) || 0 })),
     };
 
-    if (isEdit) {
-      updateVenue(id, payload);
-      notify(`${payload.name} updated.`, 'success');
-    } else {
-      addVenue(payload);
-      notify(`${payload.name} added.`, 'success');
+    try {
+      if (isEdit) {
+        await updateVenue(id, payload);
+        notify(`${payload.name} updated.`, 'success');
+      } else {
+        await addVenue(payload);
+        notify(`${payload.name} added.`, 'success');
+      }
+      navigate('/venues');
+    } catch {
+      notify('Could not save this venue. Please try again.', 'warning');
     }
-    navigate('/venues');
   };
 
   return (
@@ -259,15 +260,6 @@ export default function VenueForm() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Location (short)">
               <input value={venue.location} onChange={(e) => set({ location: e.target.value })} className={inputCls} placeholder="Ikeja, Lagos" />
-            </Field>
-            <Field label="Distance (km)">
-              <input
-                type="number"
-                step="0.1"
-                value={venue.distanceKm}
-                onChange={(e) => set({ distanceKm: e.target.value })}
-                className={inputCls}
-              />
             </Field>
             <Field label="Full address">
               <input value={venue.address} onChange={(e) => set({ address: e.target.value })} className={inputCls} />

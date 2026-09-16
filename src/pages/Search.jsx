@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import VenueCard from '../components/VenueCard';
 import BackButton from '../components/BackButton';
-import { filterVenues, useVenuesStore } from '../shared/store';
+import { filterVenues, useVenuesStore } from '../lib/venuesData';
 
 export default function Search() {
   const [query, setQuery] = useState('');

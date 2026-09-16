@@ -12,7 +12,7 @@ export default function SavedPlansModal({ open, onClose }) {
 
   const handleLoad = (plan) => {
     loadItems(plan.items);
-    notify(`"${plan.name}" loaded into your cart.`, 'success');
+    notify(`"${plan.name}" loaded into your plan.`, 'success');
     onClose();
   };
 
@@ -82,7 +82,7 @@ export default function SavedPlansModal({ open, onClose }) {
                       onClick={() => handleLoad(plan)}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-brand/10 py-2 text-xs font-bold text-brand transition hover:bg-brand hover:text-white"
                     >
-                      <FolderOpen size={13} /> Load into cart
+                      <FolderOpen size={13} /> Load into plan
                     </button>
                     <button
                       onClick={() => handleDelete(plan)}

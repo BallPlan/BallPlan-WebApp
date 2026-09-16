@@ -13,7 +13,7 @@ import {
   getActiveCategoryNames,
   setVenuePublished,
   deleteVenue,
-} from '../../shared/store';
+} from '../lib/venuesData';
 import { formatNaira } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
@@ -47,15 +47,23 @@ export default function Venues() {
     });
   }, [venues, category, location, query]);
 
-  const handleTogglePublish = (venue) => {
-    setVenuePublished(venue.id, venue.published === false);
-    notify(`${venue.name} is now ${venue.published === false ? 'published' : 'unpublished'}.`, 'success');
+  const handleTogglePublish = async (venue) => {
+    try {
+      await setVenuePublished(venue.id, venue.published === false);
+      notify(`${venue.name} is now ${venue.published === false ? 'published' : 'unpublished'}.`, 'success');
+    } catch {
+      notify('Could not update this venue.', 'warning');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    deleteVenue(deleteTarget.id);
-    notify(`${deleteTarget.name} was deleted.`, 'success');
+    try {
+      await deleteVenue(deleteTarget.id);
+      notify(`${deleteTarget.name} was deleted.`, 'success');
+    } catch {
+      notify('Could not delete this venue.', 'warning');
+    }
     setDeleteTarget(null);
   };
 

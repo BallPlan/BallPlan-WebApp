@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Heart, Compass, Bell, ShoppingCart, User, LogOut } from 'lucide-react';
+import { Home, Heart, Compass, Bell, ClipboardList, User, LogOut } from 'lucide-react';
 import logoIcon from '../assets/logo-icon.png';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -48,8 +48,8 @@ export default function Sidebar() {
         ))}
 
         <NavLink
-          to="/cart"
-          aria-label="Cart"
+          to="/my-plan"
+          aria-label="My Plan"
           className={({ isActive }) =>
             `group relative mt-1 flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
               isActive
@@ -58,14 +58,14 @@ export default function Sidebar() {
             }`
           }
         >
-          <ShoppingCart size={20} strokeWidth={2} />
+          <ClipboardList size={20} strokeWidth={2} />
           {totalItems > 0 && (
             <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-white">
               {totalItems}
             </span>
           )}
           <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
-            Cart
+            My Plan
           </span>
         </NavLink>
       </nav>

@@ -25,8 +25,8 @@ export const NOTIFICATIONS = [
   },
   {
     id: 'n4',
-    title: 'Cart reminder',
-    body: 'You left 2 items in your cart at Cubana Lounge — estimated total ₦53,000.',
+    title: 'Plan reminder',
+    body: 'You left 2 items in your plan at Cubana Lounge — estimated total ₦53,000.',
     time: '2026-08-29T14:12:00',
     read: true,
     group: 'older',

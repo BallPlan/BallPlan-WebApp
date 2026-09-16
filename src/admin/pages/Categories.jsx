@@ -12,7 +12,7 @@ import {
   deleteCategory,
   venueCountForCategory,
   useVenuesStore,
-} from '../../shared/store';
+} from '../lib/venuesData';
 import { useToast } from '../../context/ToastContext';
 
 const emptyForm = { name: '', singular: '', status: 'active' };
@@ -39,25 +39,33 @@ export default function Categories() {
     setFormOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) {
       notify('Category name is required.', 'warning');
       return;
     }
-    if (editing) {
-      updateCategory(editing.id, { name: form.name.trim(), singular: form.singular.trim() || form.name.trim(), status: form.status });
-      notify(`"${form.name}" updated.`, 'success');
-    } else {
-      addCategory({ name: form.name.trim(), singular: form.singular.trim() || form.name.trim() });
-      notify(`"${form.name}" created.`, 'success');
+    try {
+      if (editing) {
+        await updateCategory(editing.id, { name: form.name.trim(), singular: form.singular.trim() || form.name.trim(), status: form.status });
+        notify(`"${form.name}" updated.`, 'success');
+      } else {
+        await addCategory({ name: form.name.trim(), singular: form.singular.trim() || form.name.trim() });
+        notify(`"${form.name}" created.`, 'success');
+      }
+      setFormOpen(false);
+    } catch {
+      notify('Could not save this category — the name may already be taken.', 'warning');
     }
-    setFormOpen(false);
   };
 
-  const handleDelete = () => {
-    deleteCategory(deleteTarget.id);
-    notify(`"${deleteTarget.name}" deleted.`, 'success');
+  const handleDelete = async () => {
+    try {
+      await deleteCategory(deleteTarget.id);
+      notify(`"${deleteTarget.name}" deleted.`, 'success');
+    } catch {
+      notify('Could not delete this category.', 'warning');
+    }
     setDeleteTarget(null);
   };
 

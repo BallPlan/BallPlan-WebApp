@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2, Info } from 'lucide-react';
-import { getPublishedVenues, useVenuesStore, usePriceOverridesStore, getEffectivePrice } from '../shared/store';
+import { getPublishedVenues, useVenuesStore } from '../lib/venuesData';
+import { usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
 import QuantityStepper from '../components/QuantityStepper';
@@ -180,7 +181,7 @@ export default function PlanResult() {
     allSelected.forEach((item) => {
       for (let i = 0; i < item.qty; i += 1) addItem(venue, item, item.kind === 'menu' ? 'menu' : 'activity');
     });
-    notify(`Added ${venue.name}'s plan to your cart.`, 'success');
+    notify(`Added ${venue.name} to your plan.`, 'success');
   };
 
   const headline =
@@ -336,7 +337,7 @@ export default function PlanResult() {
                 onClick={handleAddToCart}
                 className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-brand py-3.5 text-sm font-bold text-brand transition hover:bg-brand hover:text-white"
               >
-                <ShoppingBag size={16} /> Add to Cart
+                <ShoppingBag size={16} /> Add to My Plan
               </motion.button>
               <motion.button
                 whileHover={{ scale: downloading ? 1 : 1.02 }}

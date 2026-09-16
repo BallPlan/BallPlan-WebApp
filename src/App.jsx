@@ -54,7 +54,7 @@ export default function App() {
                           <Route path="/" element={<Home />} />
                           <Route path="/search" element={<Search />} />
                           <Route path="/details/:id" element={<Details />} />
-                          <Route path="/cart" element={<Cart />} />
+                          <Route path="/my-plan" element={<Cart />} />
                           <Route path="/favorites" element={<Favorites />} />
                           <Route path="/notifications" element={<Notifications />} />
                           <Route path="/plan-outing" element={<PlanOuting />} />

@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react';
 import { useLocalStorage } from '../utils/useLocalStorage';
 import { getSeedReviews } from '../data/mockReviews';
-import { getVenueById, useHiddenReviewIdsStore } from '../shared/store';
+import { getVenueById } from '../lib/venuesData';
+import { useHiddenReviewIdsStore } from '../shared/store';
 
 const ReviewsContext = createContext(null);
 

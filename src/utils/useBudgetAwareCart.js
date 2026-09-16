@@ -23,7 +23,7 @@ export function useBudgetAwareCart() {
       }
     }
     cart.addItem(venue, item, kind);
-    notify(`Added "${item.name}" to your cart.`, 'success');
+    notify(`Added "${item.name}" to your plan.`, 'success');
     return true;
   };
 

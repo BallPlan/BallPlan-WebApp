@@ -43,7 +43,7 @@ export default function PlanYourself() {
       </div>
       <h1 className="font-display mt-1 text-3xl font-extrabold text-ink dark:text-white sm:text-4xl">Plan your outing</h1>
       <p className="mt-2 text-ink/55 dark:text-white/55">
-        Browse freely at your own pace — set a spending cap below to unlock browsing and we'll keep watch on your cart.
+        Browse freely at your own pace — set a spending cap below to unlock browsing and we'll keep watch on your plan.
       </p>
 
       <form onSubmit={handleStart} className="mt-8 space-y-4">
@@ -67,7 +67,7 @@ export default function PlanYourself() {
               <span className="text-base font-bold text-ink dark:text-white">Set a spending cap</span>
             </span>
           </button>
-          <p className="ml-9 mt-1 text-sm text-ink/50 dark:text-white/50">We'll warn you before your cart goes over this amount.</p>
+          <p className="ml-9 mt-1 text-sm text-ink/50 dark:text-white/50">We'll warn you before your plan goes over this amount.</p>
 
           <div
             className={`mt-4 transition-opacity ${capEnabled ? 'opacity-100' : 'pointer-events-none opacity-40'}`}

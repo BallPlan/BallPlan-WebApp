@@ -21,7 +21,7 @@ export default function Cart() {
 
   const handleClearCart = () => {
     clearCart();
-    notify('Your cart has been cleared.', 'success');
+    notify('Your plan has been cleared.', 'success');
     setConfirmOpen(false);
   };
 
@@ -30,7 +30,7 @@ export default function Cart() {
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-ink/10 pb-4 dark:border-white/10">
         <div className="flex items-center gap-3">
           <BackButton />
-          <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Your Carts</h1>
+          <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">My Plan</h1>
         </div>
         {items.length > 0 && (
           <motion.button
@@ -39,7 +39,7 @@ export default function Cart() {
             onClick={() => setConfirmOpen(true)}
             className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50/60 px-4 py-2 text-xs font-bold text-red-500 shadow-sm transition hover:border-red-500 hover:bg-red-500 hover:text-white dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500"
           >
-            <Trash2 size={14} /> Clear cart
+            <Trash2 size={14} /> Clear plan
           </motion.button>
         )}
       </div>
@@ -120,7 +120,7 @@ export default function Cart() {
               onClick={() => navigate('/view-plan')}
               className="mt-4 w-full rounded-full bg-brand py-4 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark"
             >
-              View your plan
+              View plan summary
             </motion.button>
           </div>
         </>
@@ -128,8 +128,8 @@ export default function Cart() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Clear your cart?"
-        description="This will remove every item currently in your cart. This can't be undone."
+        title="Clear your plan?"
+        description="This will remove every item currently in your plan. This can't be undone."
         confirmLabel="Yes, clear it"
         cancelLabel="No, keep it"
         onConfirm={handleClearCart}

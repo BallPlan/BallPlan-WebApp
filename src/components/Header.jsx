@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ImageWithFallback from './ImageWithFallback';
 import ConfirmDialog from './ConfirmDialog';
-import { filterVenues, useVenuesStore } from '../shared/store';
+import { filterVenues, useVenuesStore } from '../lib/venuesData';
 import { formatNaira } from '../utils/currency';
 
 export default function Header() {

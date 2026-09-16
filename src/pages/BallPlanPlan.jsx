@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Minus, Plus, Sparkles, Loader2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
-import { getActiveCategoryNames, getPublishedVenues, useVenuesStore, useCategoriesStore } from '../shared/store';
+import { getActiveCategoryNames, getPublishedVenues, useVenuesStore, useCategoriesStore } from '../lib/venuesData';
 import { useToast } from '../context/ToastContext';
 import { integerInputProps } from '../utils/integerInput';
 

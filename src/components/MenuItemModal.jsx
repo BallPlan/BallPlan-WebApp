@@ -80,10 +80,10 @@ export default function MenuItemModal({ item, inCart, onAdd, onReport, onClose }
               >
                 {inCart ? (
                   <>
-                    <Check size={16} /> Added to cart
+                    <Check size={16} /> Added to plan
                   </>
                 ) : (
-                  'Add to cart'
+                  'Add to plan'
                 )}
               </motion.button>
               <button

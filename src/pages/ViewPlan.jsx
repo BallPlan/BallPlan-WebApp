@@ -86,7 +86,7 @@ export default function ViewPlan() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <BackButton />
-          <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Your Plan</h1>
+          <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Plan Summary</h1>
         </div>
 
         <div className="flex items-center gap-2">

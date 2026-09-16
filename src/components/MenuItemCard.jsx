@@ -55,7 +55,7 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
                 <Check size={13} /> Added
               </>
             ) : (
-              'Add to cart'
+              'Add to plan'
             )}
           </motion.button>
         </div>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useCategoriesStore, getActiveCategoryNames } from '../shared/store';
+import { useCategoriesStore, getActiveCategoryNames } from '../lib/venuesData';
 
 export default function CategoryTabs({ active, onChange }) {
   const snapshot = useCategoriesStore();

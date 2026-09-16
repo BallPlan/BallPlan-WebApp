@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Star, MessageSquare, EyeOff, Eye, Search } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import { getSeedReviews } from '../../data/mockReviews';
-import { useVenuesStore, getVenues, useHiddenReviewIdsStore, getHiddenReviewIds, hideReview, unhideReview } from '../../shared/store';
+import { useVenuesStore, getVenues } from '../lib/venuesData';
+import { useHiddenReviewIdsStore, getHiddenReviewIds, hideReview, unhideReview } from '../../shared/store';
 import { useLocalStorage } from '../../utils/useLocalStorage';
 import { useToast } from '../../context/ToastContext';
 

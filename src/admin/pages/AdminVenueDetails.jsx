@@ -17,16 +17,8 @@ import {
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ConfirmDialog from '../components/ConfirmDialog';
-import {
-  useVenuesStore,
-  getVenueById,
-  setVenuePublished,
-  deleteVenue,
-  useReportsStore,
-  getReports,
-  usePriceOverridesStore,
-  getEffectivePrice,
-} from '../../shared/store';
+import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
+import { useReportsStore, getReports, usePriceOverridesStore, getEffectivePrice } from '../../shared/store';
 import { formatNaira } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
@@ -66,15 +58,23 @@ export default function AdminVenueDetails() {
 
   const priced = (item) => getEffectivePrice(venue.id, item.id, item.price);
 
-  const handleTogglePublish = () => {
-    setVenuePublished(venue.id, venue.published === false);
-    notify(`${venue.name} is now ${venue.published === false ? 'published' : 'unpublished'}.`, 'success');
+  const handleTogglePublish = async () => {
+    try {
+      await setVenuePublished(venue.id, venue.published === false);
+      notify(`${venue.name} is now ${venue.published === false ? 'published' : 'unpublished'}.`, 'success');
+    } catch {
+      notify('Could not update this venue.', 'warning');
+    }
   };
 
-  const handleDelete = () => {
-    deleteVenue(venue.id);
-    notify(`${venue.name} was deleted.`, 'success');
-    navigate('/venues');
+  const handleDelete = async () => {
+    try {
+      await deleteVenue(venue.id);
+      notify(`${venue.name} was deleted.`, 'success');
+      navigate('/venues');
+    } catch {
+      notify('Could not delete this venue.', 'warning');
+    }
   };
 
   return (
@@ -223,10 +223,6 @@ export default function AdminVenueDetails() {
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">From price</span>
                 <span className="font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-ink/50 dark:text-white/50">Distance</span>
-                <span className="font-semibold text-ink dark:text-white">{venue.distanceKm} km</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">Category</span>

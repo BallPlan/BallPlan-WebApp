@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Heart, Compass, Bell, ShoppingCart } from 'lucide-react';
+import { Home, Heart, Compass, Bell, ClipboardList } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const links = [
@@ -35,13 +35,13 @@ export default function BottomNav() {
         ))}
       </nav>
 
-      <NavLink to="/cart" aria-label="Cart" className="fixed bottom-20 right-4 z-50 lg:hidden">
+      <NavLink to="/my-plan" aria-label="My Plan" className="fixed bottom-20 right-4 z-50 lg:hidden">
         <motion.div
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
           className="relative flex h-14 w-14 items-center justify-center rounded-full bg-brand text-white shadow-card-hover dark:bg-brand dark:text-white"
         >
-          <ShoppingCart size={22} />
+          <ClipboardList size={22} />
           <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold leading-none text-white">
             {totalItems}
           </span>
