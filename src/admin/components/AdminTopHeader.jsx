@@ -2,14 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, Search, Bell, Sun, Moon, ChevronDown, Settings, LogOut, Flag } from 'lucide-react';
-import {
-  useAdminThemeStore,
-  setAdminTheme,
-  useActivityStore,
-  getActivity,
-  useReportsStore,
-  getReports,
-} from '../../shared/store';
+import { useAdminThemeStore, setAdminTheme, useActivityStore, getActivity } from '../../shared/store';
+import { useReportsStore, getReports } from '../lib/reportsData';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
 function timeAgo(iso) {

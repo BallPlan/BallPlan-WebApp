@@ -12,8 +12,10 @@ async function loadProfile(userId) {
   return data || null;
 }
 
+// Support accounts sign in here too for now, same as agents — a separate,
+// more restricted agent/support dashboard is planned but not built yet.
 function isStaffProfile(profile) {
-  return !!profile && (profile.role === 'agent' || profile.role === 'owner');
+  return !!profile && ['agent', 'owner', 'support'].includes(profile.role);
 }
 
 export function AdminAuthProvider({ children }) {

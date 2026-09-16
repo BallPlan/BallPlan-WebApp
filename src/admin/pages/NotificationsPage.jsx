@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Bell, Users as UsersIcon, CalendarClock } from 'lucide-react';
 import StatCard from '../components/StatCard';
-import { useNotificationsStore, getNotifications, pushNotification, useUsersStore, getUsers } from '../../shared/store';
+import { useNotificationsStore, getNotifications, pushNotification, useUsersStore, getUsers } from '../lib/notificationsData';
 import { useToast } from '../../context/ToastContext';
 
 function timeAgo(iso) {
@@ -17,7 +17,7 @@ function timeAgo(iso) {
 export default function NotificationsPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [target, setTarget] = useState('All Users');
+  const [target, setTarget] = useState('all');
   const { notify } = useToast();
 
   const notifSnapshot = useNotificationsStore();
@@ -25,21 +25,25 @@ export default function NotificationsPage() {
   const usersSnapshot = useUsersStore();
   const users = useMemo(() => getUsers(), [usersSnapshot]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) {
       notify('Add a title and message before sending.', 'warning');
       return;
     }
-    pushNotification({ title: title.trim(), body: body.trim(), target });
-    notify(`Notification sent to ${target}.`, 'success');
-    setTitle('');
-    setBody('');
-    setTarget('All Users');
+    try {
+      await pushNotification({ title: title.trim(), body: body.trim(), target });
+      notify(target === 'all' ? 'Notification sent to all users.' : 'Notification sent.', 'success');
+      setTitle('');
+      setBody('');
+      setTarget('all');
+    } catch {
+      notify('Could not send this notification.', 'warning');
+    }
   };
 
   const sentToday = notifications.filter((n) => {
-    const d = new Date(n.time);
+    const d = new Date(n.created_at);
     const now = new Date();
     return d.toDateString() === now.toDateString();
   }).length;
@@ -86,9 +90,9 @@ export default function NotificationsPage() {
                 onChange={(e) => setTarget(e.target.value)}
                 className="w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white"
               >
-                <option>All Users</option>
+                <option value="all">All Users</option>
                 {users.map((u) => (
-                  <option key={u.id} value={u.email}>
+                  <option key={u.id} value={u.id}>
                     {u.email}
                   </option>
                 ))}
@@ -115,14 +119,12 @@ export default function NotificationsPage() {
               <div key={n.id} className="rounded-xl border border-ink/8 p-3.5 dark:border-white/10">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-bold text-ink dark:text-white">{n.title}</p>
-                  <span className="shrink-0 text-xs text-ink/35 dark:text-white/35">{timeAgo(n.time)}</span>
+                  <span className="shrink-0 text-xs text-ink/35 dark:text-white/35">{timeAgo(n.created_at)}</span>
                 </div>
                 <p className="mt-1 text-sm text-ink/60 dark:text-white/60">{n.body}</p>
-                {n.target && (
-                  <p className="mt-1.5 flex items-center gap-1 text-xs text-ink/35 dark:text-white/35">
-                    <UsersIcon size={11} /> {n.target}
-                  </p>
-                )}
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-ink/35 dark:text-white/35">
+                  <UsersIcon size={11} /> Sent to {n.count} {n.count === 1 ? 'recipient' : 'recipients'}
+                </p>
               </div>
             ))}
           </div>

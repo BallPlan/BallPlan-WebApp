@@ -3,14 +3,8 @@ import { Store, UtensilsCrossed, Tag, Flag, Activity } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import VisitorLineChart from '../components/VisitorLineChart';
 import { useVenuesStore, getVenues, useCategoriesStore, getCategories } from '../lib/venuesData';
-import {
-  useReportsStore,
-  getReports,
-  useActivityStore,
-  getActivity,
-  getVisitorStats,
-  useAdminThemeStore,
-} from '../../shared/store';
+import { useReportsStore, getReports } from '../lib/reportsData';
+import { useActivityStore, getActivity, getVisitorStats, useAdminThemeStore } from '../../shared/store';
 
 const RANGES = ['Day', 'Week', 'Month'];
 

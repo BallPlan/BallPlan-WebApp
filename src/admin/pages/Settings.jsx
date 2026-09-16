@@ -3,10 +3,10 @@ import {
   User,
   ShieldCheck,
   Users as UsersIcon,
+  LifeBuoy,
   Camera,
   Trash2,
   Ban,
-  RotateCcw,
   KeyRound,
   Copy,
 } from 'lucide-react';
@@ -14,25 +14,24 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ActionMenu from '../components/ActionMenu';
 import { fileToDataUrl } from '../components/MediaInput';
+import PasswordInput from '../../components/PasswordInput';
+import { useAdminProfileStore, getAdminProfile, updateAdminProfile, getAdminPassword, setAdminPassword } from '../../shared/store';
 import {
-  useAdminProfileStore,
-  getAdminProfile,
-  updateAdminProfile,
-  getAdminPassword,
-  setAdminPassword,
-  useAgentsStore,
+  useStaffStore,
   getAgents,
-  addAgent,
-  updateAgent,
-  deleteAgent,
-  resetAgentPassword,
-} from '../../shared/store';
+  getSupportStaff,
+  createStaffAccount,
+  toggleStaffStatus,
+  deleteStaffAccount,
+  resetStaffPassword,
+} from '../lib/staffData';
 import { useToast } from '../../context/ToastContext';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'team', label: 'Team', icon: UsersIcon },
+  { id: 'support', label: 'Support', icon: LifeBuoy },
 ];
 
 const inputCls =
@@ -192,19 +191,22 @@ function SecuritySection() {
   );
 }
 
-const emptyAgentForm = { firstName: '', lastName: '', email: '', password: '' };
+const emptyStaffForm = { firstName: '', lastName: '', email: '', password: '' };
 
-function TeamSection() {
+// Shared by the Team (agent) and Support tabs — identical shape, different
+// role and copy. Both create real Supabase Auth accounts via Edge Functions.
+function StaffSection({ role, roleLabel, emailPlaceholder }) {
   const { notify } = useToast();
-  const agentsSnapshot = useAgentsStore();
-  const agents = useMemo(() => getAgents(), [agentsSnapshot]);
-  const [form, setForm] = useState(emptyAgentForm);
+  const staffSnapshot = useStaffStore();
+  const staff = useMemo(() => (role === 'agent' ? getAgents() : getSupportStaff()), [staffSnapshot, role]);
+  const [form, setForm] = useState(emptyStaffForm);
+  const [creating, setCreating] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [resetTarget, setResetTarget] = useState(null);
   const [tempPasswordModal, setTempPasswordModal] = useState(null);
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const email = form.email.trim().toLowerCase();
     if (!form.firstName.trim() || !form.lastName.trim() || !email || !form.password) {
@@ -212,37 +214,62 @@ function TeamSection() {
       return;
     }
     if (!email.endsWith('@ballplan.net')) {
-      notify('Agent email must be a @ballplan.net address.', 'warning');
+      notify(`${roleLabel} email must be a @ballplan.net address.`, 'warning');
       return;
     }
-    if (agents.some((a) => a.email === email)) {
-      notify('An agent with this email already exists.', 'warning');
+    if (form.password.length < 6) {
+      notify('Password must be at least 6 characters.', 'warning');
       return;
     }
-    addAgent({ firstName: form.firstName.trim(), lastName: form.lastName.trim(), email, password: form.password });
-    notify(`Agent account created for ${email}.`, 'success');
-    setForm(emptyAgentForm);
+    setCreating(true);
+    try {
+      await createStaffAccount({
+        role,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email,
+        password: form.password,
+      });
+      notify(`${roleLabel} account created for ${email}.`, 'success');
+      setForm(emptyStaffForm);
+    } catch (err) {
+      notify(err.message || `Could not create this ${roleLabel.toLowerCase()} account.`, 'warning');
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleSuspendToggle = () => {
+  const handleSuspendToggle = async () => {
     if (!suspendTarget) return;
     const nextStatus = suspendTarget.status === 'suspended' ? 'active' : 'suspended';
-    updateAgent(suspendTarget.id, { status: nextStatus });
-    notify(`${suspendTarget.email} ${nextStatus === 'suspended' ? 'suspended' : 'reinstated'}.`, 'success');
+    try {
+      await toggleStaffStatus(suspendTarget.id, nextStatus);
+      notify(`${suspendTarget.email} ${nextStatus === 'suspended' ? 'suspended' : 'reinstated'}.`, 'success');
+    } catch {
+      notify('Could not update this account.', 'warning');
+    }
     setSuspendTarget(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteTarget) return;
-    deleteAgent(deleteTarget.id);
-    notify(`Agent account deleted.`, 'success');
+    try {
+      await deleteStaffAccount(deleteTarget.id);
+      notify(`${roleLabel} account deleted.`, 'success');
+    } catch (err) {
+      notify(err.message || 'Could not delete this account.', 'warning');
+    }
     setDeleteTarget(null);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!resetTarget) return;
-    const tempPassword = resetAgentPassword(resetTarget.id);
-    setTempPasswordModal({ email: resetTarget.email, tempPassword });
+    try {
+      const { tempPassword } = await resetStaffPassword(resetTarget.id);
+      setTempPasswordModal({ email: resetTarget.email, tempPassword });
+    } catch (err) {
+      notify(err.message || 'Could not reset this password.', 'warning');
+    }
     setResetTarget(null);
   };
 
@@ -255,9 +282,9 @@ function TeamSection() {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-        <h2 className="text-sm font-bold text-ink dark:text-white">Create Venue Agent Account</h2>
+        <h2 className="text-sm font-bold text-ink dark:text-white">Create {roleLabel} Account</h2>
         <p className="mt-1 text-sm text-ink/50 dark:text-white/50">
-          Give an agent their own login. Email must be a @ballplan.net address.
+          Give a {roleLabel.toLowerCase()} their own login. Email must be a @ballplan.net address.
         </p>
 
         <form onSubmit={handleCreate} className="mt-5 space-y-4">
@@ -285,70 +312,68 @@ function TeamSection() {
               type="email"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="agent@ballplan.net"
+              placeholder={emailPlaceholder}
               className={inputCls}
             />
           </label>
           <label className="block">
             <span className={labelCls}>Password</span>
-            <input
-              type="text"
-              value={form.password}
-              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-              className={inputCls}
-            />
+            <PasswordInput value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
           </label>
           <button
             type="submit"
-            className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark"
+            disabled={creating}
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:opacity-70"
           >
-            Create agent Account
+            {creating ? 'Creating...' : `Create ${roleLabel} Account`}
           </button>
         </form>
       </div>
 
       <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-        <h2 className="text-sm font-bold text-ink dark:text-white">Customer Support Team</h2>
-        <p className="mt-1 text-sm text-ink/50 dark:text-white/50">{agents.length} agent account(s).</p>
+        <h2 className="text-sm font-bold text-ink dark:text-white">{roleLabel} Team</h2>
+        <p className="mt-1 text-sm text-ink/50 dark:text-white/50">
+          {staff.length} {roleLabel.toLowerCase()} account{staff.length === 1 ? '' : 's'}.
+        </p>
 
-        {agents.length === 0 ? (
-          <p className="py-10 text-center text-sm text-ink/40 dark:text-white/40">No agent accounts yet.</p>
+        {staff.length === 0 ? (
+          <p className="py-10 text-center text-sm text-ink/40 dark:text-white/40">No {roleLabel.toLowerCase()} accounts yet.</p>
         ) : (
           <div className="mt-4 divide-y divide-ink/5 dark:divide-white/5">
-            {agents.map((agent) => (
-              <div key={agent.id} className="flex items-center justify-between gap-3 py-3.5">
+            {staff.map((person) => (
+              <div key={person.id} className="flex items-center justify-between gap-3 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-bold text-brand">
-                    {agent.firstName[0]}
-                    {agent.lastName[0]}
+                    {person.first_name?.[0]}
+                    {person.last_name?.[0]}
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-ink dark:text-white">
-                      {agent.firstName} {agent.lastName}
+                      {person.first_name} {person.last_name}
                     </p>
-                    <p className="truncate text-xs text-ink/40 dark:text-white/40">{agent.email}</p>
+                    <p className="truncate text-xs text-ink/40 dark:text-white/40">{person.email}</p>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                      agent.status === 'suspended'
+                      person.status === 'suspended'
                         ? 'bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400'
                         : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
                     }`}
                   >
-                    {agent.status === 'suspended' ? 'Suspended' : 'Active'}
+                    {person.status === 'suspended' ? 'Suspended' : 'Active'}
                   </span>
                   <ActionMenu
                     items={[
                       {
-                        label: agent.status === 'suspended' ? 'Reinstate' : 'Suspend',
+                        label: person.status === 'suspended' ? 'Reinstate' : 'Suspend',
                         icon: Ban,
-                        onClick: () => setSuspendTarget(agent),
+                        onClick: () => setSuspendTarget(person),
                       },
-                      { label: 'Reset password', icon: KeyRound, onClick: () => setResetTarget(agent) },
+                      { label: 'Reset password', icon: KeyRound, onClick: () => setResetTarget(person) },
                       { divider: true },
-                      { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(agent) },
+                      { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(person) },
                     ]}
                   />
                 </div>
@@ -360,8 +385,8 @@ function TeamSection() {
 
       <ConfirmDialog
         open={!!suspendTarget}
-        title={suspendTarget?.status === 'suspended' ? 'Reinstate this agent?' : 'Suspend this agent?'}
-        description={`${suspendTarget?.email} will ${suspendTarget?.status === 'suspended' ? 'regain' : 'lose'} access to their agent dashboard.`}
+        title={suspendTarget?.status === 'suspended' ? `Reinstate this ${roleLabel.toLowerCase()}?` : `Suspend this ${roleLabel.toLowerCase()}?`}
+        description={`${suspendTarget?.email} will ${suspendTarget?.status === 'suspended' ? 'regain' : 'lose'} access to their dashboard.`}
         confirmLabel={suspendTarget?.status === 'suspended' ? 'Yes, reinstate' : 'Yes, suspend'}
         danger={suspendTarget?.status !== 'suspended'}
         onConfirm={handleSuspendToggle}
@@ -370,7 +395,7 @@ function TeamSection() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete this agent account?"
+        title={`Delete this ${roleLabel.toLowerCase()} account?`}
         description={`"${deleteTarget?.email}" will be permanently removed.`}
         confirmLabel="Yes, delete"
         onConfirm={handleDelete}
@@ -379,7 +404,7 @@ function TeamSection() {
 
       <ConfirmDialog
         open={!!resetTarget}
-        title="Reset this agent's password?"
+        title={`Reset this ${roleLabel.toLowerCase()}'s password?`}
         description={`A new temporary password will be generated for ${resetTarget?.email}.`}
         confirmLabel="Yes, reset"
         danger={false}
@@ -404,7 +429,7 @@ function TeamSection() {
           </button>
         </div>
         <p className="mt-3 text-xs text-ink/40 dark:text-white/40">
-          Share this with the agent securely — it won't be shown again.
+          Share this with the {roleLabel.toLowerCase()} securely — it won't be shown again.
         </p>
       </Modal>
     </div>
@@ -436,7 +461,8 @@ export default function Settings() {
       <div className="mt-5 max-w-2xl">
         {tab === 'profile' && <ProfileSection />}
         {tab === 'security' && <SecuritySection />}
-        {tab === 'team' && <TeamSection />}
+        {tab === 'team' && <StaffSection role="agent" roleLabel="Agent" emailPlaceholder="agent@ballplan.net" />}
+        {tab === 'support' && <StaffSection role="support" roleLabel="Support" emailPlaceholder="support@ballplan.net" />}
       </div>
     </div>
   );

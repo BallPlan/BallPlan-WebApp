@@ -1,48 +1,74 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Eye, Trash2, MessageSquareText, Flag, Clock, CheckCheck } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, Trash2, MessageSquareText, Flag, Clock, CheckCheck } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ActionMenu from '../components/ActionMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import StatCard from '../components/StatCard';
-import { useReportsStore, getReports, updateReportStatus, deleteReport } from '../../shared/store';
+import { useReportsStore, getReports, resolveReport, dismissReport, deleteReport } from '../lib/reportsData';
+import { useVenuesStore, getVenues } from '../lib/venuesData';
 import { formatNaira } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
-const FILTERS = ['All', 'Pending', 'Reviewed', 'Resolved'];
+const FILTERS = ['All', 'Pending', 'Resolved', 'Dismissed'];
 
 const STATUS_STYLE = {
   pending: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
-  reviewed: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
   resolved: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+  dismissed: 'bg-ink/5 text-ink/50 dark:bg-white/10 dark:text-white/50',
 };
+
+function findItem(venues, venueId, itemId) {
+  const venue = venues.find((v) => v.id === venueId);
+  if (!venue) return { venueName: venueId, itemName: itemId, itemImage: null };
+  const item = [...venue.menu, ...venue.activities].find((i) => i.id === itemId);
+  return {
+    venueName: venue.name,
+    itemName: item?.name || itemId,
+    itemImage: item?.image || venue.hero,
+  };
+}
 
 export default function Reports() {
   const [filter, setFilter] = useState('Pending');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { notify } = useToast();
 
-  const snapshot = useReportsStore();
-  const reports = useMemo(() => [...getReports()].sort((a, b) => new Date(b.date) - new Date(a.date)), [snapshot]);
+  const reportsSnapshot = useReportsStore();
+  const venuesSnapshot = useVenuesStore();
+  const reports = useMemo(() => {
+    const venues = getVenues();
+    return getReports().map((r) => ({ ...r, ...findItem(venues, r.venue_id, r.item_id) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportsSnapshot, venuesSnapshot]);
   const filtered = filter === 'All' ? reports : reports.filter((r) => r.status === filter.toLowerCase());
 
-  const mark = (report, status) => {
-    updateReportStatus(report.id, status);
-    if (status === 'resolved') {
-      notify(`Marked resolved — live price updated to ${formatNaira(report.reportedPrice)}.`, 'success');
-    } else {
-      notify(`Marked ${status}.`, 'info');
+  const mark = async (report, status) => {
+    try {
+      if (status === 'resolved') {
+        await resolveReport(report.id);
+        notify(`Marked resolved — live price updated to ${formatNaira(report.reported_price)}.`, 'success');
+      } else {
+        await dismissReport(report.id);
+        notify('Marked dismissed.', 'info');
+      }
+    } catch {
+      notify('Could not update this report.', 'warning');
     }
   };
 
-  const handleDelete = () => {
-    deleteReport(deleteTarget.id);
-    notify('Report deleted.', 'success');
+  const handleDelete = async () => {
+    try {
+      await deleteReport(deleteTarget.id);
+      notify('Report deleted.', 'success');
+    } catch {
+      notify('Could not delete this report.', 'warning');
+    }
     setDeleteTarget(null);
   };
 
   const pendingCount = reports.filter((r) => r.status === 'pending').length;
-  const reviewedCount = reports.filter((r) => r.status === 'reviewed').length;
   const resolvedCount = reports.filter((r) => r.status === 'resolved').length;
+  const dismissedCount = reports.filter((r) => r.status === 'dismissed').length;
 
   return (
     <div>
@@ -54,8 +80,8 @@ export default function Reports() {
       <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total Reports" value={reports.length} icon={Flag} tone="brand" />
         <StatCard label="Pending" value={pendingCount} icon={Clock} tone="amber" />
-        <StatCard label="Reviewed" value={reviewedCount} icon={Eye} tone="sky" />
         <StatCard label="Resolved" value={resolvedCount} icon={CheckCheck} tone="emerald" />
+        <StatCard label="Dismissed" value={dismissedCount} icon={EyeOff} tone="sky" />
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -88,7 +114,7 @@ export default function Reports() {
             key={r.id}
             className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-card dark:bg-[#1a1b20] sm:flex-row sm:items-center"
           >
-            <ImageWithFallback src={r.itemImage} seed={r.itemId} alt={r.itemName} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
+            <ImageWithFallback src={r.itemImage} seed={r.item_id} alt={r.itemName} className="h-14 w-14 shrink-0 rounded-xl object-cover" />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-bold text-ink dark:text-white">{r.itemName}</p>
@@ -98,11 +124,11 @@ export default function Reports() {
                 </span>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-ink/40 line-through dark:text-white/40">{formatNaira(r.currentPrice)}</span>
+                <span className="text-ink/40 line-through dark:text-white/40">{formatNaira(r.current_price)}</span>
                 <span className="text-ink/30">→</span>
-                <span className="font-bold text-brand">{formatNaira(r.reportedPrice)}</span>
+                <span className="font-bold text-brand">{formatNaira(r.reported_price)}</span>
                 <span className="text-xs text-ink/30 dark:text-white/30">
-                  · {new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  · {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </div>
               {r.note && (
@@ -117,16 +143,16 @@ export default function Reports() {
               <ActionMenu
                 items={[
                   {
-                    label: 'Mark Reviewed',
-                    icon: Eye,
-                    disabled: r.status !== 'pending',
-                    onClick: () => mark(r, 'reviewed'),
-                  },
-                  {
                     label: 'Mark Resolved',
                     icon: CheckCircle2,
                     disabled: r.status === 'resolved',
                     onClick: () => mark(r, 'resolved'),
+                  },
+                  {
+                    label: 'Mark Dismissed',
+                    icon: Eye,
+                    disabled: r.status === 'dismissed',
+                    onClick: () => mark(r, 'dismissed'),
                   },
                   { divider: true },
                   { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(r) },

@@ -3,12 +3,15 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, Flag } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { integerInputProps } from '../utils/integerInput';
-import { addReport } from '../shared/store';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 export default function ReportPriceModal({ item, venue, onClose }) {
   const [price, setPrice] = useState('');
   const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { notify } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     setPrice('');
@@ -17,15 +20,34 @@ export default function ReportPriceModal({ item, venue, onClose }) {
 
   if (!item) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!price || Number(price) <= 0) {
       notify('Enter a valid price before submitting.', 'warning');
       return;
     }
-    addReport(venue, item, Number(price), note);
-    notify(`Thanks! We'll review the price for "${item.name}".`, 'success');
-    onClose();
+    if (!user) {
+      notify('Sign in to report a price correction.', 'warning');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from('price_reports').insert({
+        venue_id: venue.id,
+        item_id: item.id,
+        reported_by: user.id,
+        current_price: item.price,
+        reported_price: Number(price),
+        note: note || null,
+      });
+      if (error) throw error;
+      notify(`Thanks! We'll review the price for "${item.name}".`, 'success');
+      onClose();
+    } catch {
+      notify('Could not submit this report. Please try again.', 'warning');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -82,9 +104,10 @@ export default function ReportPriceModal({ item, venue, onClose }) {
 
             <button
               type="submit"
-              className="w-full rounded-full bg-brand py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-dark active:scale-[0.98]"
+              disabled={submitting}
+              className="w-full rounded-full bg-brand py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-brand-dark active:scale-[0.98] disabled:opacity-70"
             >
-              Submit correction
+              {submitting ? 'Submitting...' : 'Submit correction'}
             </button>
           </form>
         </motion.div>

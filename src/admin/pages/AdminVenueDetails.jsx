@@ -18,14 +18,14 @@ import {
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
-import { useReportsStore, getReports, usePriceOverridesStore, getEffectivePrice } from '../../shared/store';
+import { useReportsStore, getReports } from '../lib/reportsData';
 import { formatNaira } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
 const STATUS_STYLE = {
   pending: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
-  reviewed: 'bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
   resolved: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+  dismissed: 'bg-ink/5 text-ink/50 dark:bg-white/10 dark:text-white/50',
 };
 
 export default function AdminVenueDetails() {
@@ -35,14 +35,19 @@ export default function AdminVenueDetails() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const venuesSnapshot = useVenuesStore();
-  const overridesSnapshot = usePriceOverridesStore();
   const reportsSnapshot = useReportsStore();
   const venue = useMemo(() => getVenueById(id), [id, venuesSnapshot]);
-  void overridesSnapshot;
 
   const venueReports = useMemo(
-    () => getReports().filter((r) => r.venueId === id).sort((a, b) => new Date(b.date) - new Date(a.date)),
-    [id, reportsSnapshot],
+    () =>
+      getReports()
+        .filter((r) => r.venue_id === id)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map((r) => {
+          const item = venue ? [...venue.menu, ...venue.activities].find((i) => i.id === r.item_id) : null;
+          return { ...r, itemName: item?.name || r.item_id };
+        }),
+    [id, reportsSnapshot, venue],
   );
 
   if (!venue) {
@@ -55,8 +60,6 @@ export default function AdminVenueDetails() {
       </div>
     );
   }
-
-  const priced = (item) => getEffectivePrice(venue.id, item.id, item.price);
 
   const handleTogglePublish = async () => {
     try {
@@ -159,7 +162,7 @@ export default function AdminVenueDetails() {
                     <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                      <p className="text-xs font-bold text-brand">{formatNaira(priced(item))}</p>
+                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
                     </div>
                   </div>
                 ))}
@@ -178,7 +181,7 @@ export default function AdminVenueDetails() {
                     <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                      <p className="text-xs font-bold text-brand">{formatNaira(priced(item))}</p>
+                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
                     </div>
                   </div>
                 ))}
@@ -197,7 +200,7 @@ export default function AdminVenueDetails() {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-ink dark:text-white">{r.itemName}</p>
                       <p className="text-xs text-ink/40 dark:text-white/40">
-                        {formatNaira(r.currentPrice)} → {formatNaira(r.reportedPrice)}
+                        {formatNaira(r.current_price)} → {formatNaira(r.reported_price)}
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS_STYLE[r.status]}`}>

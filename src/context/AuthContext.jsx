@@ -12,7 +12,7 @@ function toDisplayUser(user) {
 // customer app — same auth.users table, but this app should refuse them.
 async function isStaffAccount(userId) {
   const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
-  return !!data && (data.role === 'agent' || data.role === 'owner');
+  return !!data && ['agent', 'owner', 'support'].includes(data.role);
 }
 
 export function AuthProvider({ children }) {

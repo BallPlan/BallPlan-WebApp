@@ -16,7 +16,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
-import { useReportsStore, getReports } from '../../shared/store';
+import { useReportsStore, getReports } from '../lib/reportsData';
 
 const LINKS = [
   { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
