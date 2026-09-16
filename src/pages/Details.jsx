@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Star, Phone, MapPin, Clock, Play, ChevronDown, ExternalLink, MessageSquarePlus } from 'lucide-react';
 import { useVenuesStore, getVenueById } from '../lib/venuesData';
-import { usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import BackButton from '../components/BackButton';
 import Lightbox from '../components/Lightbox';
@@ -27,7 +26,6 @@ export default function Details() {
   const { id } = useParams();
   const navigate = useNavigate();
   const venuesSnapshot = useVenuesStore();
-  const overridesSnapshot = usePriceOverridesStore();
   const venue = useMemo(() => getVenueById(id), [id, venuesSnapshot]);
 
   const [tab, setTab] = useState('Menu');
@@ -70,8 +68,6 @@ export default function Details() {
   const coords = getVenueCoords(venue);
   const reviews = getReviews(venue.id);
   const reviewSummary = getSummary(venue.id);
-  const withLivePrice = (item) => ({ ...item, price: getEffectivePrice(venue.id, item.id, item.price) });
-  void overridesSnapshot; // re-render this component whenever any price override changes
 
   return (
     <div>
@@ -208,8 +204,7 @@ export default function Details() {
       <div className="mt-6">
         {tab === 'Menu' && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {venue.menu.map((raw) => {
-              const item = withLivePrice(raw);
+            {venue.menu.map((item) => {
               return (
                 <MenuItemCard
                   key={item.id}
@@ -226,8 +221,7 @@ export default function Details() {
 
         {tab === 'Activities' && (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {venue.activities.map((raw) => {
-              const item = withLivePrice(raw);
+            {venue.activities.map((item) => {
               return (
                 <MenuItemCard
                   key={item.id}
@@ -333,15 +327,17 @@ export default function Details() {
               <ImageWithFallback src={venue.hero} seed={venue.id} alt="" className="h-12 w-12 rounded-full object-cover" />
               <div className="flex-1">
                 <p className="font-bold text-ink dark:text-white">{venue.name}</p>
-                <p className="text-sm text-ink/50 dark:text-white/50">{venue.phone}</p>
+                <p className="text-sm text-ink/50 dark:text-white/50">{venue.phone || 'No phone number on file'}</p>
               </div>
-              <a
-                href={`tel:${venue.phone.replace(/[^+\d]/g, '')}`}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand transition hover:bg-brand hover:text-white"
-                aria-label="Call venue"
-              >
-                <Phone size={17} />
-              </a>
+              {venue.phone && (
+                <a
+                  href={`tel:${venue.phone.replace(/[^+\d]/g, '')}`}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand transition hover:bg-brand hover:text-white"
+                  aria-label="Call venue"
+                >
+                  <Phone size={17} />
+                </a>
+              )}
             </div>
 
             <div className="mt-4 space-y-4">

@@ -235,7 +235,7 @@ export default function VenueForm() {
           </div>
           <Field label="Description">
             <textarea
-              value={venue.description}
+              value={venue.description || ''}
               onChange={(e) => set({ description: e.target.value })}
               rows={3}
               className={`${inputCls} mt-4 resize-none`}
@@ -265,7 +265,7 @@ export default function VenueForm() {
               <input value={venue.address} onChange={(e) => set({ address: e.target.value })} className={inputCls} />
             </Field>
             <Field label="Phone">
-              <input value={venue.phone} onChange={(e) => set({ phone: e.target.value })} className={inputCls} />
+              <input value={venue.phone || ''} onChange={(e) => set({ phone: e.target.value })} className={inputCls} />
             </Field>
           </div>
         </section>

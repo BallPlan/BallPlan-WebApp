@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2, Info } from 'lucide-react';
 import { getPublishedVenues, useVenuesStore } from '../lib/venuesData';
-import { usePriceOverridesStore, getEffectivePrice } from '../shared/store';
 import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
 import QuantityStepper from '../components/QuantityStepper';
@@ -59,7 +58,6 @@ export default function PlanResult() {
   const { notify } = useToast();
   const [downloading, setDownloading] = useState(false);
   const venuesSnapshot = useVenuesStore();
-  const overridesSnapshot = usePriceOverridesStore();
 
   const params = location.state;
 
@@ -106,7 +104,6 @@ export default function PlanResult() {
 
   const venue = matches[pageIndex];
   const venueSelection = selections[venue.id] || { menu: [], activities: [] };
-  void overridesSnapshot; // re-render whenever an admin-approved price override changes
 
   const updateQty = (kind, itemId, qty) => {
     setSelections((prev) => ({

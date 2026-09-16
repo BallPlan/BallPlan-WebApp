@@ -240,7 +240,7 @@ export default function AdminVenueDetails() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone size={15} className="shrink-0 text-brand" />
-                <span className="text-ink/70 dark:text-white/70">{venue.phone}</span>
+                <span className="text-ink/70 dark:text-white/70">{venue.phone || 'No phone number on file'}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Clock size={15} className="shrink-0 text-brand" />
