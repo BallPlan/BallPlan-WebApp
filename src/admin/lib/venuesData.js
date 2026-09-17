@@ -84,6 +84,17 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+// from_price must always be the venue's actual cheapest item, not a
+// separately-typed guess — otherwise it silently drifts from reality the
+// moment someone edits the menu/activities without also updating this
+// field by hand. Derived here so it can never go stale.
+function minItemPrice(venue) {
+  const prices = [...(venue.menu || []), ...(venue.activities || [])]
+    .map((i) => Number(i.price) || 0)
+    .filter((p) => p > 0);
+  return prices.length ? Math.min(...prices) : Number(venue.fromPrice) || 0;
+}
+
 function venueColumns(venue) {
   return {
     name: venue.name,
@@ -96,7 +107,7 @@ function venueColumns(venue) {
     open_time: venue.openTime || null,
     close_time: venue.closeTime || null,
     description: venue.description || null,
-    from_price: Number(venue.fromPrice) || 0,
+    from_price: minItemPrice(venue),
     hero: venue.hero || null,
     gallery: venue.gallery || [],
     has_video: !!venue.hasVideo,

@@ -11,6 +11,7 @@ import {
 } from '../lib/venuesData';
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
+import { formatNaira } from '../../utils/currency';
 import MediaInput from '../components/MediaInput';
 
 const emptyVenue = {
@@ -133,6 +134,13 @@ export default function VenueForm() {
 
   const set = (patch) => setVenue((v) => ({ ...v, ...patch }));
 
+  // "From price" is always the cheapest menu/activity item, computed live —
+  // never hand-typed, so it can't drift from what's actually on the menu.
+  const cheapestItemPrice = useMemo(() => {
+    const prices = [...venue.menu, ...venue.activities].map((i) => Number(i.price) || 0).filter((p) => p > 0);
+    return prices.length ? Math.min(...prices) : null;
+  }, [venue.menu, venue.activities]);
+
   const handleCategoryChange = (name) => {
     const cat = categories.find((c) => c.name === name);
     set({ tab: name, category: cat?.singular || name });
@@ -213,7 +221,9 @@ export default function VenueForm() {
               </select>
             </Field>
             <Field label="From price (₦)">
-              <input {...integerInputProps(venue.fromPrice, (v) => set({ fromPrice: v }))} className={inputCls} />
+              <div className={`${inputCls} flex cursor-not-allowed items-center opacity-70`}>
+                {cheapestItemPrice != null ? formatNaira(cheapestItemPrice) : 'Add a menu/activity item below'}
+              </div>
             </Field>
             <Field label="Rating (0–5)">
               <input
