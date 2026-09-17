@@ -121,7 +121,7 @@ export default function PlanResult() {
       .map((s) => {
         const found = pool.find((p) => p.id === s.itemId);
         if (!found) return null;
-        return { ...found, price: getEffectivePrice(venue.id, found.id, found.price), qty: s.qty, kind };
+        return { ...found, qty: s.qty, kind };
       })
       .filter((i) => i && i.qty > 0);
   };
