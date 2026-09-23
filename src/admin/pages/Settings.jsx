@@ -26,12 +26,13 @@ import {
   resetStaffPassword,
 } from '../lib/staffData';
 import { useToast } from '../../context/ToastContext';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'team', label: 'Team', icon: UsersIcon },
-  { id: 'support', label: 'Support', icon: LifeBuoy },
+  { id: 'team', label: 'Agents', icon: UsersIcon },
+  { id: 'support', label: 'Support', icon: LifeBuoy, ownerOnly: true },
 ];
 
 const inputCls =
@@ -438,6 +439,8 @@ function StaffSection({ role, roleLabel, emailPlaceholder }) {
 
 export default function Settings() {
   const [tab, setTab] = useState('profile');
+  const { user } = useAdminAuth();
+  const visibleTabs = TABS.filter((t) => !t.ownerOnly || user?.role === 'owner');
 
   return (
     <div>
@@ -445,7 +448,7 @@ export default function Settings() {
       <p className="mt-1 text-sm text-ink/50 dark:text-white/50">Manage your admin profile, security and team.</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {TABS.map((t) => (
+        {visibleTabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}

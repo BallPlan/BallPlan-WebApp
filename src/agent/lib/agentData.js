@@ -1,14 +1,14 @@
-// Venues/categories data layer for the admin dashboard — full CRUD against
-// Supabase, replacing the localStorage mock in shared/store.js. Exposes the
-// same function names and camelCase venue shape (fromPrice, openTime, menu,
-// activities, ...) the admin pages already use, so only import paths needed
-// to change there. Uses the admin app's own isolated Supabase client so
-// writes are authenticated as the signed-in staff session.
+// Venues data layer for the agent dashboard — every query is explicitly
+// scoped to this agent's own venues (created_by = their user id). RLS also
+// enforces this as a ceiling, but on its own would let a plain `select *`
+// return every *published* venue regardless of owner (per the public
+// "published venues are readable" policy) — so the created_by filter here
+// is what actually keeps "my venues" meaning just that.
 import { useSyncExternalStore } from 'react';
 import { supabase } from './supabaseClient';
 
 let venues = [];
-let categories = [];
+let currentAgentId = null;
 const listeners = new Set();
 
 function emit() {
@@ -35,33 +35,52 @@ function normalizeVenue(v, itemsByVenue) {
     hasActivities: v.has_activities,
     hiddenFees: v.hidden_fees || [],
     viewsCount: v.views_count,
-    createdBy: v.created_by,
     createdAt: v.created_at,
     menu: items.filter((i) => i.kind === 'menu').map(toFormItem),
     activities: items.filter((i) => i.kind === 'activity').map(toFormItem),
   };
 }
 
+export function setCurrentAgentId(id) {
+  if (id === currentAgentId) return;
+  currentAgentId = id;
+  if (id) {
+    fetchAll();
+  } else {
+    venues = [];
+    emit();
+  }
+}
+
 async function fetchAll() {
-  const [{ data: cats, error: catErr }, { data: vs, error: vErr }, { data: items, error: iErr }] = await Promise.all([
-    supabase.from('categories').select('*').order('name'),
-    supabase.from('venues').select('*').order('created_at', { ascending: false }),
-    supabase.from('venue_items').select('*').order('sort_order'),
-  ]);
-  if (catErr || vErr || iErr) {
-    console.error('[admin venuesData] fetch failed', catErr || vErr || iErr);
+  if (!currentAgentId) return;
+  const { data: vs, error: vErr } = await supabase
+    .from('venues')
+    .select('*')
+    .eq('created_by', currentAgentId)
+    .order('created_at', { ascending: false });
+  if (vErr) {
+    console.error('[agentData] fetch venues failed', vErr);
     return;
   }
+  const venueIds = (vs || []).map((v) => v.id);
+  let items = [];
+  if (venueIds.length) {
+    const { data: itemsData, error: iErr } = await supabase
+      .from('venue_items')
+      .select('*')
+      .in('venue_id', venueIds)
+      .order('sort_order');
+    if (iErr) console.error('[agentData] fetch items failed', iErr);
+    items = itemsData || [];
+  }
   const itemsByVenue = {};
-  (items || []).forEach((i) => {
+  items.forEach((i) => {
     (itemsByVenue[i.venue_id] ||= []).push(i);
   });
   venues = (vs || []).map((v) => normalizeVenue(v, itemsByVenue));
-  categories = cats || [];
   emit();
 }
-
-fetchAll();
 
 export function getVenues() {
   return venues;
@@ -69,14 +88,19 @@ export function getVenues() {
 export function getVenueById(id) {
   return venues.find((v) => v.id === id);
 }
-export function getCategories() {
-  return categories;
+
+function useStoreValue(getter) {
+  return useSyncExternalStore(subscribe, getter, getter);
 }
-export function getActiveCategoryNames() {
-  return ['All', ...categories.filter((c) => c.status === 'active').map((c) => c.name)];
-}
-export function venueCountForCategory(name) {
-  return venues.filter((v) => v.tab === name).length;
+export const useVenuesStore = () => useStoreValue(getVenues);
+
+export async function getCategories() {
+  const { data, error } = await supabase.from('categories').select('*').eq('status', 'active').order('name');
+  if (error) {
+    console.error('[agentData] fetch categories failed', error);
+    return [];
+  }
+  return data || [];
 }
 
 function slugify(name) {
@@ -87,10 +111,8 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-// from_price must always be the venue's actual cheapest item, not a
-// separately-typed guess — otherwise it silently drifts from reality the
-// moment someone edits the menu/activities without also updating this
-// field by hand. Derived here so it can never go stale.
+// Same rule as admin: from_price is always the cheapest item, never
+// hand-typed, so it can't drift from what's actually on the menu.
 function minItemPrice(venue) {
   const prices = [...(venue.menu || []), ...(venue.activities || [])]
     .map((i) => Number(i.price) || 0)
@@ -155,8 +177,9 @@ async function replaceVenueItems(venueId, venue) {
 }
 
 export async function addVenue(venue) {
-  const id = venue.id?.trim() || `${slugify(venue.name)}-${Math.random().toString(36).slice(2, 6)}`;
-  const { error } = await supabase.from('venues').insert({ id, ...venueColumns(venue) });
+  if (!currentAgentId) throw new Error('Not signed in');
+  const id = `${slugify(venue.name)}-${Math.random().toString(36).slice(2, 6)}`;
+  const { error } = await supabase.from('venues').insert({ id, created_by: currentAgentId, ...venueColumns(venue) });
   if (error) throw error;
   await replaceVenueItems(id, venue);
   await fetchAll();
@@ -182,34 +205,33 @@ export async function setVenuePublished(id, published) {
   await fetchAll();
 }
 
-export async function addCategory({ name, singular }) {
-  const id = `${slugify(name)}-${Math.random().toString(36).slice(2, 5)}`;
-  const { error } = await supabase.from('categories').insert({ id, name, singular: singular || name, status: 'active' });
-  if (error) throw error;
-  await fetchAll();
-}
-
-export async function updateCategory(id, patch) {
-  const existing = categories.find((c) => c.id === id);
-  const { error } = await supabase.from('categories').update(patch).eq('id', id);
-  if (error) throw error;
-  if (existing && patch.name && patch.name !== existing.name) {
-    await supabase
-      .from('venues')
-      .update({ tab: patch.name, category: patch.singular || existing.singular })
-      .eq('tab', existing.name);
+// Daily view counts across all of this agent's venues, for the dashboard
+// chart — oldest to newest, always `days` points even where the count is 0.
+export async function getViewsOverTime(days = 14) {
+  const venueIds = venues.map((v) => v.id);
+  if (!venueIds.length) {
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(Date.now() - (days - 1 - i) * 86400000);
+      return { label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: 0 };
+    });
   }
-  await fetchAll();
-}
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data, error } = await supabase
+    .from('venue_views')
+    .select('viewed_at')
+    .in('venue_id', venueIds)
+    .gte('viewed_at', since);
+  if (error) console.error('[agentData] fetch views failed', error);
 
-export async function deleteCategory(id) {
-  const { error } = await supabase.from('categories').delete().eq('id', id);
-  if (error) throw error;
-  await fetchAll();
-}
+  const byDay = {};
+  (data || []).forEach((r) => {
+    const day = r.viewed_at.slice(0, 10);
+    byDay[day] = (byDay[day] || 0) + 1;
+  });
 
-function useStoreValue(getter) {
-  return useSyncExternalStore(subscribe, getter, getter);
+  return Array.from({ length: days }, (_, i) => {
+    const d = new Date(Date.now() - (days - 1 - i) * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    return { label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: byDay[key] || 0 };
+  });
 }
-export const useVenuesStore = () => useStoreValue(getVenues);
-export const useCategoriesStore = () => useStoreValue(getCategories);

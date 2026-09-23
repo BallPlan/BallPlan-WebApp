@@ -1,25 +1,22 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
-const AdminAuthContext = createContext(null);
+const AgentAuthContext = createContext(null);
 
 async function loadProfile(userId) {
   const { data } = await supabase
     .from('profiles')
-    .select('id, email, first_name, last_name, role, status')
+    .select('id, email, first_name, last_name, name, role, status')
     .eq('id', userId)
     .single();
   return data || null;
 }
 
-// Backs both /admin and /support (same bundle, same HashRouter — the nav
-// and Settings tabs restrict themselves further by role). Agents have
-// their own separate portal (AgentAuthContext) and can't log in here.
-function isStaffProfile(profile) {
-  return !!profile && ['owner', 'support'].includes(profile.role);
+function isAgentProfile(profile) {
+  return !!profile && profile.role === 'agent';
 }
 
-export function AdminAuthProvider({ children }) {
+export function AgentAuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,45 +45,53 @@ export function AdminAuthProvider({ children }) {
     };
   }, []);
 
-  // Password-based, unlike the customer app's email OTP — matches how
-  // Settings > Team creates agent accounts with an owner-chosen password.
+  // Password-based, same as admin/support — agent accounts are created by
+  // an owner or support account, never self-registered.
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    const staffProfile = await loadProfile(data.user.id);
-    if (!isStaffProfile(staffProfile)) {
+    const agentProfile = await loadProfile(data.user.id);
+    if (!isAgentProfile(agentProfile)) {
       await supabase.auth.signOut();
-      throw new Error('This account does not have admin access.');
+      throw new Error('This account does not have agent access.');
     }
-    if (staffProfile.status === 'suspended') {
+    if (agentProfile.status === 'suspended') {
       await supabase.auth.signOut();
       throw new Error('This account has been suspended.');
     }
 
-    setProfile(staffProfile);
-    return staffProfile;
+    setProfile(agentProfile);
+    return agentProfile;
   };
 
   const signOut = () => supabase.auth.signOut();
 
+  const updateOwnProfile = async (patch) => {
+    if (!session?.user) throw new Error('Not signed in');
+    const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
+    if (error) throw error;
+    setProfile((p) => ({ ...p, ...patch }));
+  };
+
   return (
-    <AdminAuthContext.Provider
+    <AgentAuthContext.Provider
       value={{
         user: session?.user ? { ...session.user, ...profile } : null,
         loading,
-        isStaff: isStaffProfile(profile),
+        isAgent: isAgentProfile(profile),
         signIn,
         signOut,
+        updateOwnProfile,
       }}
     >
       {children}
-    </AdminAuthContext.Provider>
+    </AgentAuthContext.Provider>
   );
 }
 
-export function useAdminAuth() {
-  const ctx = useContext(AdminAuthContext);
-  if (!ctx) throw new Error('useAdminAuth must be used within AdminAuthProvider');
+export function useAgentAuth() {
+  const ctx = useContext(AgentAuthContext);
+  if (!ctx) throw new Error('useAgentAuth must be used within AgentAuthProvider');
   return ctx;
 }

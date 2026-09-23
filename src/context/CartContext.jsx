@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { useLocalStorage } from '../utils/useLocalStorage';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 const CartContext = createContext(null);
 const GUEST_CART_KEY = 'ballplan_cart_guest';
@@ -49,6 +50,9 @@ export function CartProvider({ children }) {
 
   const addItem = (venue, item, kind = 'menu') => {
     const key = `${venue.id}:${item.id}`;
+    // Fire-and-forget: powers the "added to cart" count shown on the admin/
+    // agent menu views. Not awaited — shouldn't block or fail the add.
+    supabase.rpc('increment_cart_add_count', { p_venue_id: venue.id, p_item_id: item.id }).then();
     setItems((prev) => {
       const existing = prev.find((i) => i.key === key);
       if (existing) {

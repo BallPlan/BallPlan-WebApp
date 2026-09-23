@@ -73,6 +73,7 @@ export default function Venues() {
     () => (venues.length ? (venues.reduce((sum, v) => sum + (v.rating || 0), 0) / venues.length).toFixed(1) : '0.0'),
     [venues],
   );
+  const totalViews = useMemo(() => venues.reduce((sum, v) => sum + (v.viewsCount || 0), 0), [venues]);
 
   const actionsFor = (venue) => [
     { label: 'View details', icon: Eye, onClick: () => navigate(`/venues/${venue.id}`) },
@@ -101,11 +102,12 @@ export default function Venues() {
         </Link>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Total Venues" value={venues.length} icon={Store} tone="brand" />
         <StatCard label="Active" value={activeCount} icon={CheckCircle2} tone="emerald" />
         <StatCard label="Inactive" value={inactiveCount} icon={XCircle} tone="red" />
         <StatCard label="Avg Rating" value={avgRating} icon={Award} tone="amber" />
+        <StatCard label="Total Views" value={totalViews.toLocaleString()} icon={Eye} tone="sky" />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -175,10 +177,12 @@ export default function Venues() {
 
       {view === 'list' && filtered.length > 0 && (
         <div className="mt-5 overflow-hidden rounded-2xl bg-white shadow-card dark:bg-[#1a1b20]">
-          <div className="hidden grid-cols-[2.5fr_1fr_0.9fr_0.9fr_0.6fr] gap-3 border-b border-ink/8 px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink/40 dark:border-white/10 dark:text-white/40 lg:grid">
+          <div className="hidden grid-cols-[2fr_0.8fr_0.9fr_0.7fr_0.9fr_0.8fr_0.6fr] gap-3 border-b border-ink/8 px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink/40 dark:border-white/10 dark:text-white/40 lg:grid">
             <span>Name</span>
             <span>Category</span>
             <span>From Price</span>
+            <span>Views</span>
+            <span>Date Posted</span>
             <span>Status</span>
             <span className="text-right">Actions</span>
           </div>
@@ -186,7 +190,7 @@ export default function Venues() {
             {filtered.map((venue) => (
               <div
                 key={venue.id}
-                className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.5fr_1fr_0.9fr_0.9fr_0.6fr] lg:items-center"
+                className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2fr_0.8fr_0.9fr_0.7fr_0.9fr_0.8fr_0.6fr] lg:items-center"
               >
                 <button
                   onClick={() => navigate(`/venues/${venue.id}`)}
@@ -202,6 +206,12 @@ export default function Venues() {
                 </button>
                 <span className="text-sm text-ink/60 dark:text-white/60">{venue.category}</span>
                 <span className="text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                <span className="flex items-center gap-1 text-sm text-ink/60 dark:text-white/60">
+                  <Eye size={13} className="text-ink/35 dark:text-white/35" /> {venue.viewsCount ?? 0}
+                </span>
+                <span className="text-sm text-ink/60 dark:text-white/60">
+                  {venue.createdAt ? new Date(venue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                </span>
                 <span
                   className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-bold ${
                     venue.published === false
@@ -249,7 +259,12 @@ export default function Venues() {
               <button onClick={() => navigate(`/venues/${venue.id}`)} className="block w-full p-3.5 text-left">
                 <p className="truncate text-sm font-bold text-ink dark:text-white">{venue.name}</p>
                 <p className="truncate text-xs text-ink/40 dark:text-white/40">{venue.category} · {venue.location}</p>
-                <p className="mt-1.5 text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</p>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</p>
+                  <p className="flex items-center gap-1 text-xs text-ink/40 dark:text-white/40">
+                    <Eye size={12} /> {venue.viewsCount ?? 0}
+                  </p>
+                </div>
               </button>
             </motion.div>
           ))}

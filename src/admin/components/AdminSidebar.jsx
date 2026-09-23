@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
 import { useReportsStore, getReports } from '../lib/reportsData';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 const LINKS = [
   { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
@@ -25,7 +26,7 @@ const LINKS = [
   { to: '/reviews', icon: Star, label: 'Reviews' },
   { to: '/waitlist', icon: ClipboardList, label: 'Waitlist' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/categories', icon: Tag, label: 'Categories' },
+  { to: '/categories', icon: Tag, label: 'Categories', ownerOnly: true },
   { to: '/reports', icon: Flag, label: 'Reports' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -33,6 +34,9 @@ const LINKS = [
 export default function AdminSidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobile }) {
   useReportsStore();
   const pendingCount = getReports().filter((r) => r.status === 'pending').length;
+  const { user } = useAdminAuth();
+  const links = LINKS.filter((l) => !l.ownerOnly || user?.role === 'owner');
+  const portalLabel = user?.role === 'support' ? 'Support' : 'Admin';
 
   const content = (isMobile) => (
     <>
@@ -41,7 +45,7 @@ export default function AdminSidebar({ collapsed, onToggleCollapsed, mobileOpen,
         {(!collapsed || isMobile) && (
           <div className="min-w-0">
             <p className="truncate text-sm font-extrabold leading-tight text-ink dark:text-white">BallPlan</p>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink/40 dark:text-white/40">Admin</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink/40 dark:text-white/40">{portalLabel}</p>
           </div>
         )}
         {isMobile && (
@@ -56,7 +60,7 @@ export default function AdminSidebar({ collapsed, onToggleCollapsed, mobileOpen,
       </div>
 
       <nav className="mt-8 flex flex-1 flex-col gap-1">
-        {LINKS.map(({ to, end, icon: Icon, label }) => (
+        {links.map(({ to, end, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

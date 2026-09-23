@@ -14,6 +14,7 @@ import {
   Ticket,
   Flag,
   ExternalLink,
+  ShoppingBag,
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -162,7 +163,12 @@ export default function AdminVenueDetails() {
                     <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                        <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
+                          <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -181,7 +187,12 @@ export default function AdminVenueDetails() {
                     <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                        <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
+                          <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -230,6 +241,18 @@ export default function AdminVenueDetails() {
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">Category</span>
                 <span className="font-semibold text-ink dark:text-white">{venue.category}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink/50 dark:text-white/50">Total views</span>
+                <span className="flex items-center gap-1 font-bold text-ink dark:text-white">
+                  <Eye size={14} className="text-ink/40 dark:text-white/40" /> {venue.viewsCount ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink/50 dark:text-white/50">Date posted</span>
+                <span className="font-semibold text-ink dark:text-white">
+                  {venue.createdAt ? new Date(venue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                </span>
               </div>
             </div>
           </div>

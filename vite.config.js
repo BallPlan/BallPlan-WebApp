@@ -12,6 +12,7 @@ export default defineConfig({
       input: {
         main: r('index.html'),
         admin: r('admin.html'),
+        agent: r('agent.html'),
       },
     },
   },

@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Star, Phone, MapPin, Clock, Play, ChevronDown, ExternalLink, MessageSquarePlus } from 'lucide-react';
 import { useVenuesStore, getVenueById } from '../lib/venuesData';
+import { supabase } from '../lib/supabaseClient';
 import ImageWithFallback from '../components/ImageWithFallback';
 import BackButton from '../components/BackButton';
 import Lightbox from '../components/Lightbox';
@@ -27,6 +28,13 @@ export default function Details() {
   const navigate = useNavigate();
   const venuesSnapshot = useVenuesStore();
   const venue = useMemo(() => getVenueById(id), [id, venuesSnapshot]);
+
+  // Fire-and-forget: powers the agent dashboard's views count/chart. Not
+  // awaited or surfaced to the user — a failure here shouldn't affect
+  // browsing.
+  useEffect(() => {
+    if (id) supabase.rpc('record_venue_view', { p_venue_id: id }).then();
+  }, [id]);
 
   const [tab, setTab] = useState('Menu');
   const [lightboxIndex, setLightboxIndex] = useState(null);

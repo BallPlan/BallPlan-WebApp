@@ -2,6 +2,10 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/:path*", "destination": "/admin.html" },
+    { "source": "/support", "destination": "/admin.html" },
+    { "source": "/support/:path*", "destination": "/admin.html" },
+    { "source": "/agent", "destination": "/agent.html" },
+    { "source": "/agent/:path*", "destination": "/agent.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
