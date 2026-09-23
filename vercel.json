@@ -2,8 +2,8 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/:path*", "destination": "/admin.html" },
-    { "source": "/support", "destination": "/admin.html" },
-    { "source": "/support/:path*", "destination": "/admin.html" },
+    { "source": "/support", "destination": "/support.html" },
+    { "source": "/support/:path*", "destination": "/support.html" },
     { "source": "/agent", "destination": "/agent.html" },
     { "source": "/agent/:path*", "destination": "/agent.html" },
     { "source": "/(.*)", "destination": "/index.html" }

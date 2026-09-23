@@ -12,9 +12,12 @@ async function loadProfile(userId) {
   return data || null;
 }
 
-// Backs both /admin and /support (same bundle, same HashRouter — the nav
-// and Settings tabs restrict themselves further by role). Agents have
-// their own separate portal (AgentAuthContext) and can't log in here.
+// Backs both /admin and /support — two separate builds/bundles (see
+// AdminApp.jsx's swappable LoginPage and src/support/main.jsx) that both
+// import this same context module, so they share one auth backend and
+// session; the nav and Settings tabs restrict themselves further by role.
+// Agents have their own separate portal (AgentAuthContext) and can't log
+// in here.
 function isStaffProfile(profile) {
   return !!profile && ['owner', 'support'].includes(profile.role);
 }

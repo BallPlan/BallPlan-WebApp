@@ -34,14 +34,20 @@ function RequireAuth({ children }) {
   return children;
 }
 
-export default function AdminApp() {
+// LoginPage is swappable so the /support bundle (SupportApp.jsx) can reuse
+// every route, page and piece of data logic here untouched — same auth
+// backend, same nav, same permissions — while showing its own branded
+// login screen instead of "BallPlan Admin". That's also what makes /support
+// a genuinely separate build (its own HTML entry and JS bundle), not just
+// the admin page re-served under a different URL.
+export default function AdminApp({ LoginPage = AdminLogin }) {
   return (
     <ToastProvider>
       <AdminAuthProvider>
         <HashRouter>
           <ThemeSync />
           <Routes>
-            <Route path="/login" element={<AdminLogin />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
               element={
                 <RequireAuth>

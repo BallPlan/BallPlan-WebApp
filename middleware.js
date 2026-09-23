@@ -24,6 +24,7 @@ function isGatedStaffPath(pathname) {
   return (
     GATED_STAFF_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
     pathname === '/admin.html' ||
+    pathname === '/support.html' ||
     pathname === '/agent.html'
   );
 }
