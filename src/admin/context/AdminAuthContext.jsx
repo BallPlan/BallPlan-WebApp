@@ -13,19 +13,23 @@ async function loadProfile(userId) {
 }
 
 // Backs both /admin and /support — two separate builds/bundles (see
-// AdminApp.jsx's swappable LoginPage and src/support/main.jsx) that both
-// import this same context module, so they share one auth backend and
-// session; the nav and Settings tabs restrict themselves further by role.
-// Agents have their own separate portal (AgentAuthContext) and can't log
-// in here.
-function isStaffProfile(profile) {
-  return !!profile && ['owner', 'support'].includes(profile.role);
-}
-
-export function AdminAuthProvider({ children }) {
+// AdminApp.jsx's swappable LoginPage/allowedRoles props and
+// src/support/main.jsx) that both import this same context module, so
+// they share one auth *codepath* but NOT one session or one set of
+// allowed roles: src/admin/main.jsx passes allowedRoles={['owner']} and
+// the default admin supabase client; src/support/main.jsx passes
+// allowedRoles={['support']} and switches the shared `supabase` binding
+// to its own isolated session first (see lib/supabaseClient.js). Net
+// effect: an owner account can't sign into /support, a support account
+// can't sign into /admin, and neither portal's session is visible to the
+// other even if both happen to be open in the same browser. Agents have
+// their own separate portal (AgentAuthContext) and can't log in here.
+export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const isStaffProfile = (p) => !!p && allowedRoles.includes(p.role);
 
   useEffect(() => {
     let active = true;
@@ -52,7 +56,8 @@ export function AdminAuthProvider({ children }) {
   }, []);
 
   // Password-based, unlike the customer app's email OTP — matches how
-  // Settings > Team creates agent accounts with an owner-chosen password.
+  // Settings > Agents/Support creates staff accounts with an owner-chosen
+  // password.
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -60,7 +65,7 @@ export function AdminAuthProvider({ children }) {
     const staffProfile = await loadProfile(data.user.id);
     if (!isStaffProfile(staffProfile)) {
       await supabase.auth.signOut();
-      throw new Error('This account does not have admin access.');
+      throw new Error('This account does not have access to this dashboard.');
     }
     if (staffProfile.status === 'suspended') {
       await supabase.auth.signOut();
