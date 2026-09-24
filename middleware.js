@@ -33,12 +33,19 @@ export default function middleware(request) {
   const url = new URL(request.url);
   const { pathname } = url;
 
-  if (isStaticAsset(pathname)) {
-    return next();
-  }
-
+  // Gated paths are checked first and unconditionally: isStaticAsset's
+  // extension regex (`\.[a-zA-Z0-9]+$`) matches *any* dotted extension,
+  // including ".html" — so admin.html/support.html/agent.html themselves
+  // used to match it and short-circuit straight to next(), completely
+  // bypassing the gate for anyone who requested the raw built file
+  // instead of the friendly /admin, /support or /agent path. Checking
+  // isGatedStaffPath first closes that regardless of extension.
   if (isGatedStaffPath(pathname)) {
     return handleAdminGate(request, url);
+  }
+
+  if (isStaticAsset(pathname)) {
+    return next();
   }
 
   if (pathname === '/waitlist') {
