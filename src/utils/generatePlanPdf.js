@@ -70,13 +70,16 @@ async function preloadImages(sections) {
   return new Map(entries);
 }
 
-// The icon only (no wordmark) — full-logo.png's "BallPlan" text is black,
-// meant for light backgrounds, and would be unreadable on the brand-orange
-// header band. The wordmark is instead drawn as white vector text next to
-// this icon (see the header below).
+// White version of the icon (logo-icon.png recolored, alpha untouched —
+// see the generator script this was made with for how). logo-icon.png
+// itself is solid brand orange, which is the same color as the header
+// band it sits on and disappeared into it entirely; full-logo.png's
+// "BallPlan" text is also black, meant for light backgrounds. The
+// wordmark is instead drawn as white vector text next to this icon (see
+// the header below).
 async function loadLogo() {
   try {
-    const mod = await import('../assets/logo-icon.png');
+    const mod = await import('../assets/logo-icon-white.png');
     return loadImage(mod.default);
   } catch {
     return null;
@@ -250,7 +253,7 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
     cursorY = 60;
   }
 
-  doc.setFillColor(...INK);
+  doc.setFillColor(...BRAND);
   doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 52, 8, 8, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('times', 'bold');
