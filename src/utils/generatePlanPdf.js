@@ -197,7 +197,7 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
       body: section.items.map((item) => [
         '',
         item.name,
-        `${item.venueName}${item.location ? `\n${item.location}` : ''}`,
+        item.venueName,
         String(item.qty),
         money(item.unitPrice),
         money(item.unitPrice * item.qty),
