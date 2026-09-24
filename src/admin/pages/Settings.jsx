@@ -28,10 +28,16 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
+// Support's Settings nav is deliberately smaller than admin's: just
+// Profile Information and Teams (agent-account management, same feature
+// as admin's Agents tab, relabeled per spec). Support can't change its
+// own password here (only an admin can create/reset a support account's
+// password — same rule as agents) and can't create other support
+// accounts, so Security and Support are owner-only.
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'team', label: 'Agents', icon: UsersIcon },
+  { id: 'security', label: 'Security', icon: ShieldCheck, ownerOnly: true },
+  { id: 'team', label: 'Agents', supportLabel: 'Teams', icon: UsersIcon },
   { id: 'support', label: 'Support', icon: LifeBuoy, ownerOnly: true },
 ];
 
@@ -440,7 +446,14 @@ function StaffSection({ role, roleLabel, emailPlaceholder }) {
 export default function Settings() {
   const [tab, setTab] = useState('profile');
   const { user } = useAdminAuth();
-  const visibleTabs = TABS.filter((t) => !t.ownerOnly || user?.role === 'owner');
+  const isOwner = user?.role === 'owner';
+  const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner);
+  // A support account can only ever land on a tab it's actually allowed to
+  // see (e.g. if it had 'security' selected before its role was resolved).
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.id === tab)) setTab('profile');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner]);
 
   return (
     <div>
@@ -456,16 +469,16 @@ export default function Settings() {
               tab === t.id ? 'bg-brand text-white dark:bg-brand dark:text-white' : 'bg-white text-ink/50 shadow-card dark:bg-[#1a1b20] dark:text-white/50'
             }`}
           >
-            <t.icon size={14} /> {t.label}
+            <t.icon size={14} /> {isOwner ? t.label : t.supportLabel || t.label}
           </button>
         ))}
       </div>
 
       <div className="mt-5 max-w-2xl">
         {tab === 'profile' && <ProfileSection />}
-        {tab === 'security' && <SecuritySection />}
+        {tab === 'security' && isOwner && <SecuritySection />}
         {tab === 'team' && <StaffSection role="agent" roleLabel="Agent" emailPlaceholder="agent@ballplan.net" />}
-        {tab === 'support' && <StaffSection role="support" roleLabel="Support" emailPlaceholder="support@ballplan.net" />}
+        {tab === 'support' && isOwner && <StaffSection role="support" roleLabel="Support" emailPlaceholder="support@ballplan.net" />}
       </div>
     </div>
   );
