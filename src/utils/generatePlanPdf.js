@@ -1,13 +1,52 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import fullLogo from '../assets/full-logo.png';
-import { formatNaira } from './currency';
 
 const BRAND = [180, 88, 25];
 const INK = [18, 18, 18];
 const MUTED = [140, 140, 140];
 const CREAM = [248, 245, 240];
 const IMG_SIZE = 26;
+
+// jsPDF's built-in standard fonts (helvetica/times/courier) only cover
+// WinAnsiEncoding — they have no glyph for the Naira sign (₦, U+20A6), so
+// `doc.text('₦...')` silently drops or mangles it. Noto Sans does include
+// it, so it's embedded and used specifically for money amounts; the rest
+// of the document keeps using the fast, tiny built-in fonts. Fetched at
+// generation time (not bundled into the main JS) since this is only ever
+// needed when someone actually downloads a plan.
+const MONEY_FONT = 'NotoSans';
+let moneyFontReady = null;
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadMoneyFont(doc) {
+  if (!moneyFontReady) {
+    moneyFontReady = Promise.all([
+      fetch('/fonts/NotoSans-Regular.ttf').then((r) => r.arrayBuffer()),
+      fetch('/fonts/NotoSans-Bold.ttf').then((r) => r.arrayBuffer()),
+    ])
+      .then(([regular, bold]) => ({
+        regular: arrayBufferToBase64(regular),
+        bold: arrayBufferToBase64(bold),
+      }))
+      .catch(() => null); // graceful degradation — falls back to helvetica (symbol just won't render) rather than failing the whole PDF
+  }
+  const fonts = await moneyFontReady;
+  if (!fonts) return false;
+  doc.addFileToVFS('NotoSans-Regular.ttf', fonts.regular);
+  doc.addFont('NotoSans-Regular.ttf', MONEY_FONT, 'normal');
+  doc.addFileToVFS('NotoSans-Bold.ttf', fonts.bold);
+  doc.addFont('NotoSans-Bold.ttf', MONEY_FONT, 'bold');
+  return true;
+}
 
 function loadImage(src) {
   return new Promise((resolve) => {
@@ -27,29 +66,46 @@ async function preloadImages(sections) {
   return new Map(entries);
 }
 
+async function loadLogo() {
+  try {
+    const mod = await import('../assets/full-logo.png');
+    return loadImage(mod.default);
+  } catch {
+    return null;
+  }
+}
+
 export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalPrice, preparedFor, budget }) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 40;
 
+  const hasMoneyFont = await loadMoneyFont(doc);
+  // Amounts render as "₦12,345" via the embedded font when it loaded; if
+  // the fetch failed for some reason, fall back to spelling out "NGN" on
+  // the built-in font rather than risk a blank/garbled symbol.
+  const money = (amount, opts = {}) => {
+    const n = Number(amount) || 0;
+    const formatted = n.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+    doc.setFont(hasMoneyFont ? MONEY_FONT : 'helvetica', opts.bold ? 'bold' : 'normal');
+    return hasMoneyFont ? `₦${formatted}` : `NGN ${formatted}`;
+  };
+
   const venueCount = new Set(sections.flatMap((s) => s.items.map((i) => i.venueId))).size;
   const images = await preloadImages(sections);
 
   // ---------------------------------------------------------------- header
+  const headerHeight = 88;
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, pageWidth, 104, 'F');
+  doc.rect(0, 0, pageWidth, headerHeight, 'F');
 
-  try {
-    const logo = await loadImage(fullLogo);
-    if (logo) {
-      const logoH = 26;
-      const logoW = (logo.width / logo.height) * logoH;
-      doc.addImage(logo, 'PNG', margin, 30, logoW, logoH);
-    } else {
-      throw new Error('logo failed to load');
-    }
-  } catch {
+  const logo = await loadLogo();
+  if (logo) {
+    const logoH = 26;
+    const logoW = (logo.width / logo.height) * logoH;
+    doc.addImage(logo, 'PNG', margin, 30, logoW, logoH);
+  } else {
     doc.setTextColor(255, 255, 255);
     doc.setFont('times', 'bold');
     doc.setFontSize(22);
@@ -63,22 +119,9 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   const dateStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
-  doc.text(`Generated ${dateStr} · grouped by ${groupLabel.toLowerCase()}`, pageWidth - margin, 62, { align: 'right' });
+  doc.text(`Generated ${dateStr} · grouped by ${groupLabel.toLowerCase()}`, pageWidth - margin, 65, { align: 'right' });
 
-  const summaryParts = [
-    `${venueCount} venue${venueCount === 1 ? '' : 's'}`,
-    `${totalItems} item${totalItems === 1 ? '' : 's'}`,
-  ];
-  if (budget != null) {
-    const savings = budget - totalPrice;
-    summaryParts.push(`Budget ${formatNaira(budget)}`);
-    summaryParts.push(`${savings >= 0 ? 'Savings' : 'Over budget'} ${formatNaira(Math.abs(savings))}`);
-  }
-  if (preparedFor) summaryParts.unshift(`Prepared for ${preparedFor}`);
-  doc.setFontSize(9.5);
-  doc.text(summaryParts.join('  ·  '), pageWidth - margin, 77, { align: 'right' });
-
-  let cursorY = 132;
+  let cursorY = headerHeight + 28;
 
   // -------------------------------------------------------------- sections
   sections.forEach((section) => {
@@ -107,10 +150,10 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
     doc.setTextColor(...MUTED);
     doc.text(`· ${section.count} item${section.count === 1 ? '' : 's'}`, margin + 38 + titleWidth, cursorY + 18.5);
 
-    doc.setFont('helvetica', 'bold');
+    const subtotalText = money(section.subtotal, { bold: true });
     doc.setFontSize(11.5);
     doc.setTextColor(...BRAND);
-    doc.text(formatNaira(section.subtotal), pageWidth - margin - 12, cursorY + 18.5, { align: 'right' });
+    doc.text(subtotalText, pageWidth - margin - 12, cursorY + 18.5, { align: 'right' });
 
     cursorY += 34;
 
@@ -135,8 +178,8 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
         item.name,
         `${item.venueName}${item.location ? `\n${item.location}` : ''}`,
         String(item.qty),
-        formatNaira(item.unitPrice),
-        formatNaira(item.unitPrice * item.qty),
+        money(item.unitPrice),
+        money(item.unitPrice * item.qty),
       ]),
       theme: 'plain',
       styles: {
@@ -158,10 +201,11 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
       },
       columnStyles: {
         0: { cellWidth: IMG_SIZE + 16 },
+        1: { fontStyle: 'bold' },
         2: { textColor: MUTED, fontSize: 8.5 },
         3: { halign: 'center', cellWidth: 36 },
-        4: { halign: 'right', cellWidth: 78 },
-        5: { halign: 'right', cellWidth: 78, fontStyle: 'bold', textColor: BRAND },
+        4: { halign: 'right', cellWidth: 78, font: hasMoneyFont ? MONEY_FONT : 'helvetica' },
+        5: { halign: 'right', cellWidth: 78, fontStyle: 'bold', textColor: BRAND, font: hasMoneyFont ? MONEY_FONT : 'helvetica' },
       },
       didDrawCell: (data) => {
         if (data.section !== 'body' || data.column.index !== 0) return;
@@ -193,16 +237,42 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
   doc.setFont('times', 'bold');
   doc.setFontSize(13);
   doc.text(`Plan Total — ${totalItems} item${totalItems === 1 ? '' : 's'}`, margin + 18, cursorY + 32);
+  const totalText = money(totalPrice, { bold: true });
   doc.setFontSize(19);
-  doc.text(formatNaira(totalPrice), pageWidth - margin - 18, cursorY + 33, { align: 'right' });
+  doc.text(totalText, pageWidth - margin - 18, cursorY + 33, { align: 'right' });
 
+  // ----------------------------------------------------------------- footer
+  // "Prepared for X · N venues · M items [· budget/savings]" lives in the
+  // footer rather than the header — keeps the brand band to two lines and
+  // reads more like a receipt's fine print than a headline stat.
+  const summaryParts = [
+    `${venueCount} venue${venueCount === 1 ? '' : 's'}`,
+    `${totalItems} item${totalItems === 1 ? '' : 's'}`,
+  ];
+  if (budget != null) {
+    const savings = budget - totalPrice;
+    summaryParts.push(`Budget ${money(budget)}`);
+    summaryParts.push(`${savings >= 0 ? 'Savings' : 'Over budget'} ${money(Math.abs(savings))}`);
+  }
+  if (preparedFor) summaryParts.unshift(`Prepared for ${preparedFor}`);
+
+  // The summary line may have a "₦" baked into it (budget/savings) — a
+  // single doc.text() call renders its whole string in one font, so once
+  // that ₦ is in there the *entire* line needs a font that can draw it.
+  // Noto Sans doesn't have an italic weight embedded, so this line loses
+  // the italic styling only in that specific case; the disclaimer line
+  // never contains a currency symbol and keeps it.
+  const summaryHasMoney = budget != null;
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i += 1) {
     doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFont(summaryHasMoney && hasMoneyFont ? MONEY_FONT : 'helvetica', summaryHasMoney ? 'normal' : 'italic');
+    doc.setFontSize(8.5);
     doc.setTextColor(...MUTED);
-    doc.text('Generated with BallPlan — prices shown are estimates and may vary at the venue.', margin, pageHeight - 22);
+    doc.text(summaryParts.join(' · '), margin, pageHeight - 34);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Generated with BallPlan. Prices shown are estimates and may vary at the venue.', margin, pageHeight - 22);
+    doc.setFont('helvetica', 'normal');
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, pageHeight - 22, { align: 'right' });
   }
 
