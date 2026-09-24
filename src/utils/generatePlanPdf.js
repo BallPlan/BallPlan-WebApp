@@ -4,7 +4,11 @@ import autoTable from 'jspdf-autotable';
 const BRAND = [180, 88, 25];
 const INK = [18, 18, 18];
 const MUTED = [140, 140, 140];
-const CREAM = [248, 245, 240];
+// The app's actual light-mode page background (tailwind.config.js's
+// "cream", src/index.css's body background) — the whole page, not just
+// the section bars.
+const PAGE_BG = [248, 245, 240];
+const WHITE = [255, 255, 255];
 const IMG_SIZE = 26;
 
 // jsPDF's built-in standard fonts (helvetica/times/courier) only cover
@@ -66,13 +70,22 @@ async function preloadImages(sections) {
   return new Map(entries);
 }
 
+// The icon only (no wordmark) — full-logo.png's "BallPlan" text is black,
+// meant for light backgrounds, and would be unreadable on the brand-orange
+// header band. The wordmark is instead drawn as white vector text next to
+// this icon (see the header below).
 async function loadLogo() {
   try {
-    const mod = await import('../assets/full-logo.png');
+    const mod = await import('../assets/logo-icon.png');
     return loadImage(mod.default);
   } catch {
     return null;
   }
+}
+
+function paintPageBackground(doc, pageWidth, pageHeight) {
+  doc.setFillColor(...PAGE_BG);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
 }
 
 export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalPrice, preparedFor, budget }) {
@@ -97,20 +110,22 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
 
   // ---------------------------------------------------------------- header
   const headerHeight = 88;
+  paintPageBackground(doc, pageWidth, pageHeight);
   doc.setFillColor(...BRAND);
   doc.rect(0, 0, pageWidth, headerHeight, 'F');
 
   const logo = await loadLogo();
+  let wordmarkX = margin;
   if (logo) {
     const logoH = 26;
     const logoW = (logo.width / logo.height) * logoH;
     doc.addImage(logo, 'PNG', margin, 30, logoW, logoH);
-  } else {
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('times', 'bold');
-    doc.setFontSize(22);
-    doc.text('BallPlan', margin, 52);
+    wordmarkX = margin + logoW + 10;
   }
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(22);
+  doc.text('BallPlan', wordmarkX, 50);
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('times', 'bold');
@@ -127,10 +142,13 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
   sections.forEach((section) => {
     if (cursorY > pageHeight - 160) {
       doc.addPage();
+      paintPageBackground(doc, pageWidth, pageHeight);
       cursorY = 50;
     }
 
-    doc.setFillColor(...CREAM);
+    // White against the page's cream background, so each venue's bar
+    // stands out the way it does in the app itself.
+    doc.setFillColor(...WHITE);
     doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 28, 5, 5, 'F');
 
     // Small icon bubble, mirroring the icon badge next to each group's
@@ -228,6 +246,7 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
   // ------------------------------------------------------------------ total
   if (cursorY > pageHeight - 90) {
     doc.addPage();
+    paintPageBackground(doc, pageWidth, pageHeight);
     cursorY = 60;
   }
 
