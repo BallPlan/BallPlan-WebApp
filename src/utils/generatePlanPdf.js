@@ -179,14 +179,15 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
     cursorY += 34;
 
     // When grouped by venue, the section already represents one place —
-    // show its address/phone once instead of repeating it on every row.
+    // show its phone once instead of repeating it on every row. Just the
+    // phone, not the full street address (e.g. "Lekki-Epe Expressway,
+    // Lekki, Lagos") — that was cluttering this line.
     const venueInfo = section.items[0];
-    if (groupLabel === 'Venue' && (venueInfo?.address || venueInfo?.phone)) {
+    if (groupLabel === 'Venue' && venueInfo?.phone) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(...MUTED);
-      const contactLine = [venueInfo.address, venueInfo.phone].filter(Boolean).join('   ·   ');
-      doc.text(contactLine, margin + 4, cursorY);
+      doc.text(venueInfo.phone, margin + 4, cursorY);
       cursorY += 14;
     }
 
@@ -197,7 +198,7 @@ export async function downloadPlanPdf({ sections, groupLabel, totalItems, totalP
       body: section.items.map((item) => [
         '',
         item.name,
-        item.venueName,
+        `${item.venueName}${item.location ? `\n${item.location}` : ''}`,
         String(item.qty),
         money(item.unitPrice),
         money(item.unitPrice * item.qty),
