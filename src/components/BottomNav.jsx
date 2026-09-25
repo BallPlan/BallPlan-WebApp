@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Heart, Compass, Bell, ClipboardList } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useNotifications } from '../context/NotificationsContext';
 
 const links = [
   { to: '/', icon: Home, label: 'Home' },
@@ -12,6 +13,7 @@ const links = [
 
 export default function BottomNav() {
   const { totalItems } = useCart();
+  const { unreadCount } = useNotifications();
 
   return (
     <>
@@ -30,7 +32,14 @@ export default function BottomNav() {
               }`
             }
           >
-            <Icon size={19} />
+            <span className="relative">
+              <Icon size={19} />
+              {to === '/notifications' && unreadCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
           </NavLink>
         ))}
       </nav>

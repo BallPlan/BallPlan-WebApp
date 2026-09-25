@@ -18,6 +18,7 @@ export default function NotificationsPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [target, setTarget] = useState('all');
+  const [sending, setSending] = useState(false);
   const { notify } = useToast();
 
   const notifSnapshot = useNotificationsStore();
@@ -31,14 +32,20 @@ export default function NotificationsPage() {
       notify('Add a title and message before sending.', 'warning');
       return;
     }
+    setSending(true);
     try {
-      await pushNotification({ title: title.trim(), body: body.trim(), target });
-      notify(target === 'all' ? 'Notification sent to all users.' : 'Notification sent.', 'success');
+      const recipients = await pushNotification({ title: title.trim(), body: body.trim(), target });
+      notify(
+        `Notification sent to ${recipients} ${recipients === 1 ? 'user' : 'users'}.`,
+        'success',
+      );
       setTitle('');
       setBody('');
       setTarget('all');
-    } catch {
-      notify('Could not send this notification.', 'warning');
+    } catch (err) {
+      notify(err.message || 'Could not send this notification.', 'warning');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -69,6 +76,7 @@ export default function NotificationsPage() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                maxLength={120}
                 placeholder="e.g. Weekend picks near you"
                 className="w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white"
               />
@@ -78,6 +86,7 @@ export default function NotificationsPage() {
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                maxLength={500}
                 rows={4}
                 placeholder="Write the notification body..."
                 className="w-full resize-none rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white"
@@ -92,7 +101,7 @@ export default function NotificationsPage() {
               >
                 <option value="all">All Users</option>
                 {users.map((u) => (
-                  <option key={u.id} value={u.id}>
+                  <option key={u.id} value={u.email}>
                     {u.email}
                   </option>
                 ))}
@@ -102,9 +111,10 @@ export default function NotificationsPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark"
+              disabled={sending}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:opacity-70"
             >
-              <Send size={15} /> Send notification
+              <Send size={15} /> {sending ? 'Sending…' : 'Send notification'}
             </motion.button>
           </div>
         </form>
@@ -124,6 +134,8 @@ export default function NotificationsPage() {
                 <p className="mt-1 text-sm text-ink/60 dark:text-white/60">{n.body}</p>
                 <p className="mt-1.5 flex items-center gap-1 text-xs text-ink/35 dark:text-white/35">
                   <UsersIcon size={11} /> Sent to {n.count} {n.count === 1 ? 'recipient' : 'recipients'}
+                  {n.target && n.target !== 'All Users' ? ` (${n.target})` : ''}
+                  {n.sentBy ? ` · by ${n.sentBy}` : ''}
                 </p>
               </div>
             ))}

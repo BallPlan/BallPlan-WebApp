@@ -3,7 +3,7 @@
 // those go through Edge Functions; suspending/reinstating is a plain RLS-
 // gated profile update any staff member can already do.
 import { useSyncExternalStore } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase, onSignedIn } from './supabaseClient';
 
 let staff = [];
 const listeners = new Set();
@@ -31,6 +31,7 @@ async function fetchAll() {
 }
 
 fetchAll();
+onSignedIn(fetchAll);
 
 export function getStaff() {
   return staff;

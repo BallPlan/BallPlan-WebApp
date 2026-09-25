@@ -4,7 +4,7 @@
 // the row itself, so they're resolved by looking the venue/item up in the
 // venues data layer, which is already fetched for the Venues pages.
 import { useSyncExternalStore } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase, onSignedIn } from './supabaseClient';
 
 let reports = [];
 const listeners = new Set();
@@ -28,6 +28,7 @@ async function fetchAll() {
 }
 
 fetchAll();
+onSignedIn(fetchAll);
 
 export function getReports() {
   return reports;

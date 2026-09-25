@@ -10,6 +10,11 @@
   </head>
   <body>
     <div id="support-root"></div>
+    <script>
+      // Read by src/admin/lib/supabaseClient.js to pick the isolated support
+      // session at module-evaluation time. Must run before the module below.
+      window.__ballplanPortal = 'support';
+    </script>
     <script type="module" src="/src/support/main.jsx"></script>
   </body>
 </html>

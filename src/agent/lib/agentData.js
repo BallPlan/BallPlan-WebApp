@@ -143,35 +143,62 @@ function venueColumns(venue) {
   };
 }
 
-async function replaceVenueItems(venueId, venue) {
-  const { error: delErr } = await supabase.from('venue_items').delete().eq('venue_id', venueId);
-  if (delErr) throw delErr;
+// Syncs the venue's menu/activities by item id (update kept rows, insert new
+// ones, delete removed ones) — same rule as the admin data layer. Deleting
+// and re-inserting everything on every edit used to reset each item's
+// "added to cart" count and cascade-delete its price history.
+async function syncVenueItems(venueId, venue) {
+  const { data: existing, error: exErr } = await supabase.from('venue_items').select('id').eq('venue_id', venueId);
+  if (exErr) throw exErr;
+  const inDb = new Set((existing || []).map((r) => r.id));
+  const used = new Set();
+
+  const nextId = (prefix) => {
+    let n = 1;
+    while (inDb.has(`${prefix}${n}`) || used.has(`${prefix}${n}`)) n += 1;
+    return `${prefix}${n}`;
+  };
+  const resolveId = (item, prefix) => {
+    const id = item.id && inDb.has(item.id) && !used.has(item.id) ? item.id : nextId(prefix);
+    used.add(id);
+    return id;
+  };
 
   const rows = [
-    ...(venue.menu || []).map((m, idx) => ({
-      id: `m${idx + 1}`,
-      venue_id: venueId,
-      kind: 'menu',
-      name: m.name,
-      image: m.image || null,
-      price: Number(m.price) || 0,
-      description: m.desc || null,
-      sort_order: idx,
-    })),
-    ...(venue.activities || []).map((a, idx) => ({
-      id: `a${idx + 1}`,
-      venue_id: venueId,
-      kind: 'activity',
-      name: a.name,
-      image: a.image || null,
-      price: Number(a.price) || 0,
-      description: a.desc || null,
-      sort_order: idx,
-    })),
-  ].filter((r) => r.name);
+    ...(venue.menu || [])
+      .filter((m) => m.name)
+      .map((m, idx) => ({
+        id: resolveId(m, 'm'),
+        venue_id: venueId,
+        kind: 'menu',
+        name: m.name,
+        image: m.image || null,
+        price: Number(m.price) || 0,
+        description: m.desc || null,
+        sort_order: idx,
+      })),
+    ...(venue.activities || [])
+      .filter((a) => a.name)
+      .map((a, idx) => ({
+        id: resolveId(a, 'a'),
+        venue_id: venueId,
+        kind: 'activity',
+        name: a.name,
+        image: a.image || null,
+        price: Number(a.price) || 0,
+        description: a.desc || null,
+        sort_order: idx,
+      })),
+  ];
 
   if (rows.length) {
-    const { error } = await supabase.from('venue_items').insert(rows);
+    const { error } = await supabase.from('venue_items').upsert(rows, { onConflict: 'venue_id,id' });
+    if (error) throw error;
+  }
+
+  const removed = (existing || []).map((r) => r.id).filter((id) => !used.has(id));
+  if (removed.length) {
+    const { error } = await supabase.from('venue_items').delete().eq('venue_id', venueId).in('id', removed);
     if (error) throw error;
   }
 }
@@ -181,7 +208,7 @@ export async function addVenue(venue) {
   const id = `${slugify(venue.name)}-${Math.random().toString(36).slice(2, 6)}`;
   const { error } = await supabase.from('venues').insert({ id, created_by: currentAgentId, ...venueColumns(venue) });
   if (error) throw error;
-  await replaceVenueItems(id, venue);
+  await syncVenueItems(id, venue);
   await fetchAll();
   return id;
 }
@@ -189,7 +216,7 @@ export async function addVenue(venue) {
 export async function updateVenue(id, venue) {
   const { error } = await supabase.from('venues').update(venueColumns(venue)).eq('id', id);
   if (error) throw error;
-  await replaceVenueItems(id, venue);
+  await syncVenueItems(id, venue);
   await fetchAll();
 }
 

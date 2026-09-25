@@ -7,6 +7,8 @@ import { BudgetProvider } from './context/BudgetContext';
 import { ToastProvider } from './context/ToastContext';
 import { ReviewsProvider } from './context/ReviewsContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { NotificationsProvider } from './context/NotificationsContext';
+import PageViewTracker from './components/PageViewTracker';
 
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -38,8 +40,10 @@ export default function App() {
             <BudgetProvider>
               <CartProvider>
                 <ToastProvider>
+                  <NotificationsProvider>
                   <ReviewsProvider>
                     <BrowserRouter>
+                      <PageViewTracker />
                       <Routes>
                         <Route path="/signin" element={<SignIn />} />
                         <Route path="/signup" element={<SignUp />} />
@@ -67,6 +71,7 @@ export default function App() {
                       </Routes>
                     </BrowserRouter>
                   </ReviewsProvider>
+                  </NotificationsProvider>
                 </ToastProvider>
               </CartProvider>
             </BudgetProvider>

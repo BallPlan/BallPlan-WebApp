@@ -28,9 +28,13 @@ export default function AgentTopHeader({ onOpenMobileMenu }) {
             onClick={() => setProfileOpen((v) => !v)}
             className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-ink/5 dark:hover:bg-white/10"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              {initials}
-            </span>
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {initials}
+              </span>
+            )}
             <span className="hidden text-sm font-semibold text-ink dark:text-white sm:block">{displayName}</span>
             <ChevronDown size={14} className="hidden text-ink/40 dark:text-white/40 sm:block" />
           </button>

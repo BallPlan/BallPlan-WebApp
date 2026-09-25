@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bell, BellOff, CheckCheck } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, Sparkles, Store, TrendingDown, ClipboardList, Star, Flag } from 'lucide-react';
 import BackButton from '../components/BackButton';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationsContext';
+
+const KIND_ICON = {
+  welcome: Sparkles,
+  new_venue: Store,
+  price_drop: TrendingDown,
+  plan_downloaded: ClipboardList,
+  plan_saved: ClipboardList,
+  review: Star,
+  report_received: Flag,
+  report_resolved: Flag,
+  report_dismissed: Flag,
+};
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function timeAgo(iso) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -16,62 +31,21 @@ function timeAgo(iso) {
   return `${days}d ago`;
 }
 
-export default function Notifications() {
-  const { user } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user) {
-      setNotifications([]);
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (active) {
-          setNotifications(data || []);
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  const markRead = (id) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    supabase.from('notifications').update({ read: true }).eq('id', id).then();
-  };
-
-  const markAllRead = () => {
-    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    if (unreadIds.length) supabase.from('notifications').update({ read: true }).in('id', unreadIds).then();
-  };
-
-  const recent = useMemo(() => notifications.filter((n) => n.group_name !== 'older'), [notifications]);
-  const older = useMemo(() => notifications.filter((n) => n.group_name === 'older'), [notifications]);
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const Section = ({ title, list }) =>
-    list.length === 0 ? null : (
-      <div className="mb-8">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-ink/40 dark:text-white/40">{title}</h2>
-        <div className="space-y-2">
-          {list.map((n, i) => (
+function NotificationList({ title, list, onOpen }) {
+  if (list.length === 0) return null;
+  return (
+    <div className="mb-8">
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-ink/40 dark:text-white/40">{title}</h2>
+      <div className="space-y-2">
+        {list.map((n, i) => {
+          const Icon = KIND_ICON[n.kind] || Bell;
+          return (
             <motion.button
               key={n.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              onClick={() => markRead(n.id)}
+              transition={{ delay: Math.min(i, 8) * 0.04 }}
+              onClick={() => onOpen(n)}
               className={`flex w-full items-start gap-3 rounded-2xl p-4 text-left shadow-card transition hover:shadow-card-hover ${
                 n.read ? 'bg-white/70 dark:bg-white/5' : 'bg-white dark:bg-[#1c1c1e]'
               }`}
@@ -81,7 +55,7 @@ export default function Notifications() {
                   n.read ? 'bg-ink/5 text-ink/30 dark:bg-white/10 dark:text-white/30' : 'bg-brand/10 text-brand'
                 }`}
               >
-                <Bell size={16} />
+                <Icon size={16} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -98,10 +72,34 @@ export default function Notifications() {
                 <p className="mt-1 text-xs text-ink/35 dark:text-white/35">{timeAgo(n.created_at)}</p>
               </div>
             </motion.button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-    );
+    </div>
+  );
+}
+
+export default function Notifications() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotifications();
+
+  // "Recent" is anything from the last 7 days — computed from the date
+  // rather than a stored label, so notifications age into "Earlier" on
+  // their own.
+  const { recent, older } = useMemo(() => {
+    const cutoff = Date.now() - WEEK_MS;
+    return {
+      recent: notifications.filter((n) => new Date(n.created_at).getTime() >= cutoff),
+      older: notifications.filter((n) => new Date(n.created_at).getTime() < cutoff),
+    };
+  }, [notifications]);
+
+  const open = (n) => {
+    if (!n.read) markRead(n.id);
+    // Only ever follow in-app links.
+    if (typeof n.link === 'string' && n.link.startsWith('/') && !n.link.startsWith('//')) navigate(n.link);
+  };
 
   return (
     <div>
@@ -136,8 +134,8 @@ export default function Notifications() {
         </div>
       ) : (
         <>
-          <Section title="Recent" list={recent} />
-          <Section title="Older" list={older} />
+          <NotificationList title="Recent" list={recent} onOpen={open} />
+          <NotificationList title="Earlier" list={older} onOpen={open} />
         </>
       )}
     </div>

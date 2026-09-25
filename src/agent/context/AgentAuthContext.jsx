@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { squareAvatarBlob } from '../../utils/resizeImage';
 
 const AgentAuthContext = createContext(null);
 
 async function loadProfile(userId) {
   const { data } = await supabase
     .from('profiles')
-    .select('id, email, first_name, last_name, name, role, status')
+    .select('id, email, first_name, last_name, name, role, status, avatar_url')
     .eq('id', userId)
     .single();
   return data || null;
@@ -74,6 +75,30 @@ export function AgentAuthProvider({ children }) {
     setProfile((p) => ({ ...p, ...patch }));
   };
 
+  // Profile picture: cropped/scaled to a small square JPEG in the browser,
+  // stored at avatars/<user id>/avatar.jpg (the bucket's policies only let
+  // you write inside your own folder), and its public URL saved on the
+  // profile. The ?v= suffix busts the cache when the picture is replaced.
+  const uploadAvatar = async (file) => {
+    if (!session?.user) throw new Error('Not signed in');
+    const blob = await squareAvatarBlob(file);
+    const path = `${session.user.id}/avatar.jpg`;
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+    if (error) throw error;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const url = `${data.publicUrl}?v=${Date.now()}`;
+    await updateOwnProfile({ avatar_url: url });
+    return url;
+  };
+
+  const removeAvatar = async () => {
+    if (!session?.user) throw new Error('Not signed in');
+    await updateOwnProfile({ avatar_url: null });
+    await supabase.storage.from('avatars').remove([`${session.user.id}/avatar.jpg`]);
+  };
+
   return (
     <AgentAuthContext.Provider
       value={{
@@ -83,6 +108,8 @@ export function AgentAuthProvider({ children }) {
         signIn,
         signOut,
         updateOwnProfile,
+        uploadAvatar,
+        removeAvatar,
       }}
     >
       {children}

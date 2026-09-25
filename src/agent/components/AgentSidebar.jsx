@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Store, Star, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Store, Star, Settings, X, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
 
 const LINKS = [
@@ -9,7 +9,7 @@ const LINKS = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function AgentSidebar({ collapsed, mobileOpen, onCloseMobile }) {
+export default function AgentSidebar({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobile }) {
   const content = (isMobile) => (
     <>
       <div className={`flex items-center gap-2 px-2 ${collapsed && !isMobile ? 'justify-center' : ''}`}>
@@ -38,6 +38,7 @@ export default function AgentSidebar({ collapsed, mobileOpen, onCloseMobile }) {
             to={to}
             end={end}
             onClick={onCloseMobile}
+            title={collapsed && !isMobile ? label : undefined}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                 collapsed && !isMobile ? 'justify-center' : ''
@@ -48,11 +49,33 @@ export default function AgentSidebar({ collapsed, mobileOpen, onCloseMobile }) {
               }`
             }
           >
-            <Icon size={18} />
+            <Icon size={18} className="shrink-0" />
             {(!collapsed || isMobile) && label}
           </NavLink>
         ))}
       </nav>
+
+      <NavLink
+        to="/logout"
+        onClick={onCloseMobile}
+        title={collapsed && !isMobile ? 'Log out' : undefined}
+        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink/60 transition hover:bg-red-50 hover:text-red-600 dark:text-white/60 dark:hover:bg-red-500/10 dark:hover:text-red-400 ${
+          collapsed && !isMobile ? 'justify-center' : ''
+        }`}
+      >
+        <LogOut size={18} className="shrink-0" />
+        {(!collapsed || isMobile) && 'Log out'}
+      </NavLink>
+
+      {!isMobile && (
+        <button
+          onClick={onToggleCollapsed}
+          className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-ink/10 py-2 text-xs font-semibold text-ink/50 transition hover:bg-ink/5 dark:border-white/10 dark:text-white/50 dark:hover:bg-white/10"
+        >
+          {collapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+          {!collapsed && 'Collapse'}
+        </button>
+      )}
     </>
   );
 

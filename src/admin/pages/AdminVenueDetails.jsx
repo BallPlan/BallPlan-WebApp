@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PostedBy from '../components/PostedBy';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
 import { useReportsStore, getReports } from '../lib/reportsData';
 import { formatNaira } from '../../utils/currency';
@@ -247,6 +248,10 @@ export default function AdminVenueDetails() {
                 <span className="flex items-center gap-1 font-bold text-ink dark:text-white">
                   <Eye size={14} className="text-ink/40 dark:text-white/40" /> {venue.viewsCount ?? 0}
                 </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink/50 dark:text-white/50">Posted by</span>
+                <PostedBy venue={venue} size="sm" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">Date posted</span>

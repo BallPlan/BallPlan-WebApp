@@ -1,12 +1,38 @@
-import { useMemo, useState } from 'react';
-import { Store, UtensilsCrossed, Tag, Flag, Activity } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Store,
+  UtensilsCrossed,
+  Tag,
+  Flag,
+  Activity,
+  Users as UsersIcon,
+  Star,
+  Bell,
+  ClipboardList,
+  ShieldCheck,
+} from 'lucide-react';
 import StatCard from '../components/StatCard';
 import VisitorLineChart from '../components/VisitorLineChart';
 import { useVenuesStore, getVenues, useCategoriesStore, getCategories } from '../lib/venuesData';
 import { useReportsStore, getReports } from '../lib/reportsData';
-import { useActivityStore, getActivity, getVisitorStats, useAdminThemeStore } from '../../shared/store';
+import { useActivityStore, getActivity, refreshActivity } from '../lib/activityData';
+import { fetchVisitorSeries } from '../lib/analyticsData';
+import { useAdminThemeStore } from '../../shared/store';
 
 const RANGES = ['Day', 'Week', 'Month'];
+const RANGE_PHRASE = { Day: 'in the last 24 hours', Week: 'in the last 7 days', Month: 'in the last 12 months' };
+
+const KIND_ICON = {
+  venue: Store,
+  price: Tag,
+  category: Tag,
+  report: Flag,
+  user: UsersIcon,
+  review: Star,
+  notification: Bell,
+  waitlist: ClipboardList,
+  staff: ShieldCheck,
+};
 
 function timeAgo(iso) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -14,39 +40,15 @@ function timeAgo(iso) {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function buildChartData(stats, range) {
-  if (range === 'Day') {
-    return stats.hourly.map((d) => ({
-      label: new Date(d.date).toLocaleTimeString('en-US', { hour: 'numeric' }),
-      count: d.count,
-    }));
-  }
-  if (range === 'Week') {
-    return stats.daily.slice(-7).map((d) => ({
-      label: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
-      count: d.count,
-    }));
-  }
-  // Month: aggregate daily into the last 12 calendar months
-  const buckets = new Map();
-  stats.daily.forEach((d) => {
-    const date = new Date(d.date);
-    const key = `${date.getFullYear()}-${date.getMonth()}`;
-    buckets.set(key, (buckets.get(key) || 0) + d.count);
-  });
-  return Array.from(buckets.entries())
-    .slice(-12)
-    .map(([key, count]) => {
-      const [y, m] = key.split('-').map(Number);
-      return { label: new Date(y, m, 1).toLocaleDateString('en-US', { month: 'short' }), count };
-    });
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function Dashboard() {
   const [range, setRange] = useState('Week');
+  const [visitors, setVisitors] = useState(null); // { points, totalVisitors, totalViews }
+  const [visitorsError, setVisitorsError] = useState('');
   const theme = useAdminThemeStore();
 
   useVenuesStore();
@@ -62,8 +64,35 @@ export default function Dashboard() {
   const totalMenuItems = useMemo(() => venues.reduce((sum, v) => sum + (v.menu?.length || 0), 0), [venues]);
   const pendingReports = reports.filter((r) => r.status === 'pending').length;
 
-  const chartData = useMemo(() => buildChartData(getVisitorStats(), range), [range]);
-  const totalVisitorsInRange = chartData.reduce((sum, d) => sum + d.count, 0);
+  // Real visitor numbers, refreshed when the range changes and once a
+  // minute after that.
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchVisitorSeries(range)
+        .then((series) => {
+          if (cancelled) return;
+          setVisitors(series);
+          setVisitorsError('');
+        })
+        .catch((err) => {
+          if (!cancelled) setVisitorsError(err.message || 'Could not load visitor data.');
+        });
+    };
+    setVisitors(null);
+    load();
+    const timer = setInterval(load, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [range]);
+
+  useEffect(() => {
+    refreshActivity();
+  }, []);
+
+  const chartData = visitors?.points ?? [];
 
   return (
     <div>
@@ -83,7 +112,11 @@ export default function Dashboard() {
             <div>
               <h2 className="text-sm font-bold text-ink dark:text-white">Website visitors</h2>
               <p className="text-xs text-ink/40 dark:text-white/40">
-                {totalVisitorsInRange.toLocaleString()} visitors this {range.toLowerCase()}
+                {visitors
+                  ? `${visitors.totalVisitors.toLocaleString()} visitor${visitors.totalVisitors === 1 ? '' : 's'} · ${visitors.totalViews.toLocaleString()} page view${visitors.totalViews === 1 ? '' : 's'} ${RANGE_PHRASE[range]}`
+                  : visitorsError
+                  ? 'Could not load visitor data.'
+                  : 'Loading…'}
               </p>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-ink/5 p-1 dark:bg-white/10">
@@ -101,8 +134,19 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mt-4">
-            <VisitorLineChart data={chartData} dark={theme === 'dark'} />
+            {chartData.length > 0 ? (
+              <VisitorLineChart data={chartData} dark={theme === 'dark'} />
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-xs text-ink/40 dark:text-white/40">
+                {visitorsError || 'Loading…'}
+              </div>
+            )}
           </div>
+          {visitors && visitors.totalViews === 0 && (
+            <p className="mt-2 text-center text-xs text-ink/40 dark:text-white/40">
+              No visits recorded {RANGE_PHRASE[range]} yet — visitors show up here as soon as people open the site.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
@@ -112,12 +156,20 @@ export default function Dashboard() {
           </div>
           <div className="mt-3 max-h-[280px] space-y-3 overflow-y-auto pr-1">
             {activity.length === 0 && <p className="py-8 text-center text-xs text-ink/40 dark:text-white/40">No activity yet.</p>}
-            {activity.slice(0, 12).map((a) => (
-              <div key={a.id} className="border-b border-ink/5 pb-3 last:border-0 dark:border-white/5">
-                <p className="text-sm text-ink/80 dark:text-white/80">{a.message}</p>
-                <p className="mt-0.5 text-xs text-ink/35 dark:text-white/35">{timeAgo(a.time)}</p>
-              </div>
-            ))}
+            {activity.slice(0, 20).map((a) => {
+              const Icon = KIND_ICON[a.kind] || Activity;
+              return (
+                <div key={a.id} className="flex items-start gap-2.5 border-b border-ink/5 pb-3 last:border-0 dark:border-white/5">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                    <Icon size={12} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink/80 dark:text-white/80">{a.message}</p>
+                    <p className="mt-0.5 text-xs text-ink/35 dark:text-white/35">{timeAgo(a.time)}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
+import { reportPlanDownloaded } from '../lib/analytics';
 
 // Returns { matches, tier } — tier tells the UI whether these results
 // actually satisfy what the user asked for, or are a fallback, so the page
@@ -165,6 +166,7 @@ export default function PlanResult() {
         budget: params.max,
       });
       console.log('[plan-result] downloaded PDF plan for', venue.name);
+      reportPlanDownloaded({ venues: 1, items: totalItemsCount, total });
       notify('Your plan has been downloaded.', 'success');
     } catch (err) {
       console.error('[plan-result] failed to generate PDF', err);

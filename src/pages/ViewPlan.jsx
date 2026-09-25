@@ -12,6 +12,7 @@ import { useSavedPlans } from '../context/SavedPlansContext';
 import { useToast } from '../context/ToastContext';
 import { formatNaira } from '../utils/currency';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
+import { reportPlanDownloaded } from '../lib/analytics';
 
 const GROUPINGS = [
   { key: 'venueName', label: 'Venue', icon: Store },
@@ -55,6 +56,7 @@ export default function ViewPlan() {
         preparedFor: user?.email,
       });
       console.log('[view-plan] downloaded PDF plan with', totalItems, 'items');
+      reportPlanDownloaded({ venues: new Set(items.map((i) => i.venueId)).size, items: totalItems, total: totalPrice });
       notify('Your plan has been downloaded.', 'success');
     } catch (err) {
       console.error('[view-plan] failed to generate PDF', err);

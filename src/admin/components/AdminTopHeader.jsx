@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, Search, Bell, Sun, Moon, ChevronDown, Settings, LogOut, Flag } from 'lucide-react';
-import { useAdminThemeStore, setAdminTheme, useActivityStore, getActivity } from '../../shared/store';
+import { useAdminThemeStore, setAdminTheme } from '../../shared/store';
+import { useActivityStore, getActivity } from '../lib/activityData';
 import { useReportsStore, getReports } from '../lib/reportsData';
 import { useAdminAuth } from '../context/AdminAuthContext';
 

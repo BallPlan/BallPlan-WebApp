@@ -7,12 +7,17 @@ import { useLocalStorage } from '../../utils/useLocalStorage';
 
 export default function AgentLayout() {
   const location = useLocation();
-  const [collapsed] = useLocalStorage('ballplan_agent_sidebar_collapsed', false);
+  const [collapsed, setCollapsed] = useLocalStorage('ballplan_agent_sidebar_collapsed', false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#f5f4f2] text-ink dark:bg-[#0f1013] dark:text-white">
-      <AgentSidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <AgentSidebar
+        collapsed={collapsed}
+        onToggleCollapsed={() => setCollapsed((v) => !v)}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+      />
 
       <div className={`transition-all duration-200 ${collapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         <AgentTopHeader onOpenMobileMenu={() => setMobileOpen(true)} />
