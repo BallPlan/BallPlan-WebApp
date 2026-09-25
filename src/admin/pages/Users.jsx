@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Users as UsersIcon, UserX, Eye, Ban, RotateCcw, Trash2 } from 'lucide-react';
+import { Search, Users as UsersIcon, UserX, Eye, Ban, RotateCcw, Trash2, MailCheck, MailWarning } from 'lucide-react';
 import ActionMenu from '../components/ActionMenu';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
@@ -24,7 +24,7 @@ export default function Users() {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, name, first_name, last_name, status, created_at')
+      .select('id, email, name, first_name, last_name, status, created_at, email_confirmed_at')
       .eq('role', 'customer')
       .order('created_at', { ascending: false });
     if (error) {
@@ -59,6 +59,7 @@ export default function Users() {
   }, [viewTarget]);
 
   const suspendedCount = users.filter((u) => u.status === 'suspended').length;
+  const unverifiedCount = users.filter((u) => !u.email_confirmed_at).length;
 
   const filtered = useMemo(
     () => users.filter((u) => `${displayName(u)} ${u.email}`.toLowerCase().includes(query.toLowerCase())),
@@ -108,15 +109,17 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 sm:max-w-md">
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:max-w-2xl sm:grid-cols-3">
         <StatCard label="Total Users" value={users.length} icon={UsersIcon} tone="brand" />
+        <StatCard label="Unverified Email" value={unverifiedCount} icon={MailWarning} tone="amber" />
         <StatCard label="Suspended Users" value={suspendedCount} icon={UserX} tone="red" />
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl bg-white shadow-card dark:bg-[#1a1b20]">
-        <div className="hidden grid-cols-[2.5fr_1.2fr_0.8fr_0.6fr] gap-3 border-b border-ink/8 px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink/40 dark:border-white/10 dark:text-white/40 lg:grid">
+        <div className="hidden grid-cols-[2.4fr_1.1fr_1fr_0.8fr_0.6fr] gap-3 border-b border-ink/8 px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink/40 dark:border-white/10 dark:text-white/40 lg:grid">
           <span>Email</span>
           <span>Joined</span>
+          <span>Email</span>
           <span>Status</span>
           <span className="text-right">Actions</span>
         </div>
@@ -124,13 +127,24 @@ export default function Users() {
           {loading && <p className="py-16 text-center text-sm text-ink/40 dark:text-white/40">Loading users...</p>}
           {!loading &&
             filtered.map((user) => (
-              <div key={user.id} className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.5fr_1.2fr_0.8fr_0.6fr] lg:items-center">
+              <div key={user.id} className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.4fr_1.1fr_1fr_0.8fr_0.6fr] lg:items-center">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-ink dark:text-white">{user.email}</p>
                   <p className="truncate text-xs text-ink/40 dark:text-white/40">{displayName(user)}</p>
                 </div>
                 <span className="text-sm text-ink/60 dark:text-white/60">
                   {new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                <span
+                  title={user.email_confirmed_at ? `Verified ${new Date(user.email_confirmed_at).toLocaleDateString()}` : 'Has not entered the verification code yet'}
+                  className={`flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    user.email_confirmed_at
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                      : 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'
+                  }`}
+                >
+                  {user.email_confirmed_at ? <MailCheck size={12} /> : <MailWarning size={12} />}
+                  {user.email_confirmed_at ? 'Verified' : 'Unverified'}
                 </span>
                 <span
                   className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-bold ${
@@ -176,6 +190,12 @@ export default function Users() {
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Joined</p>
                 <p className="font-medium text-ink dark:text-white">{new Date(viewTarget.created_at).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink/40 dark:text-white/40">Email verified</p>
+                <p className="font-medium text-ink dark:text-white">
+                  {viewTarget.email_confirmed_at ? new Date(viewTarget.email_confirmed_at).toLocaleDateString() : 'Not yet'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-ink/40 dark:text-white/40">Plans created</p>
