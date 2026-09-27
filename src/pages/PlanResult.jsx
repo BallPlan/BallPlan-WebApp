@@ -15,6 +15,37 @@ import { useToast } from '../context/ToastContext';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
 import { reportPlanDownloaded } from '../lib/analytics';
 
+// Picks up to `limit` venues from `list`, cycling through `categories` one
+// at a time (Restaurant, then Beach, then Restaurant, ...) instead of just
+// taking the first `limit` in list order. venues is sorted newest-first, so
+// with multiple categories selected, whichever one had the most *recent*
+// venues could fill the whole slice before an older category ever got a
+// turn — e.g. selecting Restaurants alongside a newer category would come
+// back with only that other category, never a restaurant, even though
+// plenty matched. A category with a single-element `categories` just
+// returns the first `limit` as before.
+function distributeAcrossCategories(list, categories, limit) {
+  if (categories.length <= 1) return list.slice(0, limit);
+
+  const byCategory = new Map(categories.map((c) => [c, []]));
+  list.forEach((v) => byCategory.get(v.tab)?.push(v));
+
+  const result = [];
+  let addedThisPass = true;
+  while (result.length < limit && addedThisPass) {
+    addedThisPass = false;
+    for (const cat of categories) {
+      const bucket = byCategory.get(cat);
+      if (bucket.length) {
+        result.push(bucket.shift());
+        addedThisPass = true;
+        if (result.length >= limit) break;
+      }
+    }
+  }
+  return result;
+}
+
 // Returns { matches, tier } — tier tells the UI whether these results
 // actually satisfy what the user asked for, or are a fallback, so the page
 // can be honest about it instead of always claiming a "match". When the
@@ -31,11 +62,14 @@ function pickMatches({ max, location, category }, venues) {
     return true;
   };
   const byClosenessToBudget = (a, b) => Math.abs(a.fromPrice - max) - Math.abs(b.fromPrice - max);
+  const byRatingDesc = (a, b) => (b.rating || 0) - (a.rating || 0);
 
-  const exact = venues.filter((v) => v.fromPrice <= max && matchesPreferences(v));
-  if (exact.length) return { matches: exact.slice(0, 6), tier: 'exact' };
+  const exactAll = venues.filter((v) => v.fromPrice <= max && matchesPreferences(v)).sort(byRatingDesc);
+  const exact = distributeAcrossCategories(exactAll, categories, 6);
+  if (exact.length) return { matches: exact, tier: 'exact' };
 
-  const preferenceOnly = venues.filter(matchesPreferences).sort(byClosenessToBudget).slice(0, 6);
+  const preferenceOnlyAll = venues.filter(matchesPreferences).sort(byClosenessToBudget);
+  const preferenceOnly = distributeAcrossCategories(preferenceOnlyAll, categories, 6);
   if (preferenceOnly.length) return { matches: preferenceOnly, tier: 'preference' };
 
   const closest = [...venues].sort(byClosenessToBudget).slice(0, 4);

@@ -12,6 +12,9 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
 import { formatNaira } from '../../utils/currency';
+import NigeriaPhoneInput, { isValidNigeriaPhone } from '../../components/NigeriaPhoneInput';
+import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeriaStates';
+import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../components/MediaInput';
 
 const emptyVenue = {
@@ -19,6 +22,7 @@ const emptyVenue = {
   tab: '',
   category: '',
   location: '',
+  state: 'Lagos',
   address: '',
   phone: '',
   rating: '4.5',
@@ -122,9 +126,12 @@ export default function VenueForm() {
     if (isEdit) {
       const existing = getVenueById(id);
       if (existing) {
+        const { area, state } = splitLocation(existing.location);
         setVenue({
           ...emptyVenue,
           ...existing,
+          location: area,
+          state,
           rating: String(existing.rating),
           fromPrice: String(existing.fromPrice),
         });
@@ -164,8 +171,13 @@ export default function VenueForm() {
       notify('Name and category are required.', 'warning');
       return;
     }
+    if (venue.phone && !isValidNigeriaPhone(venue.phone)) {
+      notify('Phone number must be 10 digits, e.g. 803 123 4567.', 'warning');
+      return;
+    }
     const payload = {
       ...venue,
+      location: joinLocation(venue.location, venue.state),
       rating: Number(venue.rating) || 0,
       fromPrice: Number(venue.fromPrice) || 0,
       gallery: venue.gallery.filter(Boolean),
@@ -237,10 +249,10 @@ export default function VenueForm() {
               />
             </Field>
             <Field label="Open time">
-              <input value={venue.openTime} onChange={(e) => set({ openTime: e.target.value })} className={inputCls} />
+              <input type="time" value={to24Hour(venue.openTime)} onChange={(e) => set({ openTime: to12Hour(e.target.value) })} className={inputCls} />
             </Field>
             <Field label="Close time">
-              <input value={venue.closeTime} onChange={(e) => set({ closeTime: e.target.value })} className={inputCls} />
+              <input type="time" value={to24Hour(venue.closeTime)} onChange={(e) => set({ closeTime: to12Hour(e.target.value) })} className={inputCls} />
             </Field>
           </div>
           <Field label="Description">
@@ -268,14 +280,23 @@ export default function VenueForm() {
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Location</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Location (short)">
-              <input value={venue.location} onChange={(e) => set({ location: e.target.value })} className={inputCls} placeholder="Ikeja, Lagos" />
+            <Field label="Area">
+              <input value={venue.location} onChange={(e) => set({ location: e.target.value })} className={inputCls} placeholder="Ikeja" />
+            </Field>
+            <Field label="State">
+              <select value={venue.state} onChange={(e) => set({ state: e.target.value })} className={inputCls}>
+                {NIGERIA_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s === 'Abuja' ? 'FCT (Abuja)' : s}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Full address">
               <input value={venue.address} onChange={(e) => set({ address: e.target.value })} className={inputCls} />
             </Field>
             <Field label="Phone">
-              <input value={venue.phone || ''} onChange={(e) => set({ phone: e.target.value })} className={inputCls} />
+              <NigeriaPhoneInput value={venue.phone} onChange={(v) => set({ phone: v })} />
             </Field>
           </div>
         </section>
