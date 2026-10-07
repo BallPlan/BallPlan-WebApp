@@ -5,13 +5,12 @@ import { next } from '@vercel/edge';
 // to come back). The one thing still gated is the staff side:
 // /admin, /support and /agent stay behind a secret key — visiting the page
 // once with ?key=<key> sets a cookie, after which the real Supabase-backed
-// login for that portal takes over. Each portal's key is its own secret:
-// the support key opens /support only, and the admin key does not open
-// /support. No key configured server-side means that portal fails closed
-// (404), not open.
+// login for that portal takes over. Each portal has its own key and its
+// own cookie — none of the three opens another. No key configured
+// server-side means that portal fails closed (404), not open.
 //      /admin   -> ADMIN_GATE_KEY
-//      /support -> SUPPORT_GATE_KEY (must differ from ADMIN_GATE_KEY)
-//      /agent   -> ADMIN_GATE_KEY (unchanged — shares the admin key/cookie)
+//      /support -> SUPPORT_GATE_KEY
+//      /agent   -> AGENT_GATE_KEY
 export const config = {
   matcher: ['/:path*'],
 };
@@ -19,9 +18,9 @@ export const config = {
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 const PORTALS = [
-  { prefix: '/admin', html: '/admin.html', envKey: 'ADMIN_GATE_KEY', cookie: 'admin_gate', cookiePath: '/' },
+  { prefix: '/admin', html: '/admin.html', envKey: 'ADMIN_GATE_KEY', cookie: 'admin_gate', cookiePath: '/admin' },
   { prefix: '/support', html: '/support.html', envKey: 'SUPPORT_GATE_KEY', cookie: 'support_gate', cookiePath: '/support' },
-  { prefix: '/agent', html: '/agent.html', envKey: 'ADMIN_GATE_KEY', cookie: 'admin_gate', cookiePath: '/' },
+  { prefix: '/agent', html: '/agent.html', envKey: 'AGENT_GATE_KEY', cookie: 'agent_gate', cookiePath: '/agent' },
 ];
 
 function portalFor(pathname) {
@@ -66,10 +65,12 @@ function handleGate(request, url, portal) {
     return new Response(null, { status: 404 });
   }
 
-  // Support must never share the admin key — if someone configures the same
-  // value for both, fail closed rather than silently letting one key open
-  // both portals.
-  if (portal.envKey === 'SUPPORT_GATE_KEY' && safeEqual(gateKey, process.env.ADMIN_GATE_KEY || '')) {
+  // No portal's key may double as another's — if two ever get configured
+  // the same, fail closed rather than silently letting one key open both.
+  const sharesAnotherPortalsKey = PORTALS.some(
+    (p) => p.envKey !== portal.envKey && safeEqual(gateKey, process.env[p.envKey] || ''),
+  );
+  if (sharesAnotherPortalsKey) {
     return new Response(null, { status: 404 });
   }
 
