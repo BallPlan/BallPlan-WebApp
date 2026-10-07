@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { Wallet, X } from 'lucide-react';
 import CategoryTabs from '../components/CategoryTabs';
 import VenueCard from '../components/VenueCard';
-import { useVenuesStore, getPublishedVenues } from '../lib/venuesData';
+import VenueCardSkeleton from '../components/VenueCardSkeleton';
+import { useVenuesStore, useVenuesLoadedStore, getPublishedVenues } from '../lib/venuesData';
 import { formatNaira } from '../utils/currency';
 import { useBudget } from '../context/BudgetContext';
 import { useCart } from '../context/CartContext';
@@ -14,6 +15,7 @@ export default function Home() {
   const { totalPrice } = useCart();
 
   const venuesSnapshot = useVenuesStore(); // subscribe so publish/edit/delete in admin re-renders this page live
+  const loaded = useVenuesLoadedStore();
   const allVenues = useMemo(() => getPublishedVenues(), [venuesSnapshot]);
 
   const venues = useMemo(() => {
@@ -56,7 +58,13 @@ export default function Home() {
         <h1 className="font-display mt-1 text-2xl font-extrabold text-ink dark:text-white sm:text-3xl">What are you in the mood for?</h1>
       </div>
 
-      {venues.length === 0 ? (
+      {!loaded ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <VenueCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : venues.length === 0 ? (
         <p className="py-16 text-center text-ink/50 dark:text-white/50">No places found in this category yet.</p>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

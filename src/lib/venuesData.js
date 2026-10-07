@@ -47,6 +47,11 @@ async function fetchAll() {
   ]);
   if (catErr || vErr || iErr) {
     console.error('[venuesData] fetch failed', catErr || vErr || iErr);
+    // Still flip loaded + emit — otherwise a real fetch error (bad network,
+    // Supabase hiccup) leaves Home's skeleton grid spinning forever instead
+    // of settling on the empty state.
+    loaded = true;
+    emit();
     return;
   }
   const itemsByVenue = {};
@@ -60,6 +65,19 @@ async function fetchAll() {
 }
 
 fetchAll();
+
+// Mobile browsers (and some desktop ones) can restore a page from the
+// back/forward cache instead of re-running the app — pressing Back after
+// leaving Home very soon after it first mounted could freeze it mid-fetch,
+// with venues still empty, and bfcache would then keep handing back that
+// same empty snapshot on every later Back press, since nothing normally
+// re-renders a bfcached page. Forcing a refetch on restore (which calls
+// emit(), waking up every useSyncExternalStore subscriber) fixes that.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) fetchAll();
+  });
+}
 
 export function getVenues() {
   return venues;
@@ -98,3 +116,4 @@ function useStoreValue(getter) {
 }
 export const useVenuesStore = () => useStoreValue(getVenues);
 export const useCategoriesStore = () => useStoreValue(getCategories);
+export const useVenuesLoadedStore = () => useStoreValue(isVenuesLoaded);
