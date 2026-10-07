@@ -2,15 +2,16 @@ import { next } from '@vercel/edge';
 
 // The main app is public (no more blanket redirect to /waitlist — that was
 // the pre-launch gate; see git history before 2026-10-07 if it ever needs
-// to come back). The one thing still gated is the staff side:
-// /admin, /support and /agent stay behind a secret key — visiting the page
-// once with ?key=<key> sets a cookie, after which the real Supabase-backed
-// login for that portal takes over. Each portal has its own key and its
-// own cookie — none of the three opens another. No key configured
+// to come back). /admin and /support still stay behind a secret key —
+// visiting the page once with ?key=<key> sets a cookie, after which the
+// real Supabase-backed login for that portal takes over. Each has its own
+// key and its own cookie — neither opens the other. No key configured
 // server-side means that portal fails closed (404), not open.
 //      /admin   -> ADMIN_GATE_KEY
 //      /support -> SUPPORT_GATE_KEY
-//      /agent   -> AGENT_GATE_KEY
+// /agent is plain public (like the main app) — agents are external people
+// the owner hands this link to directly, and the real protection is the
+// Supabase agent login itself (role-restricted), not a pre-launch key.
 export const config = {
   matcher: ['/:path*'],
 };
@@ -20,7 +21,6 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const PORTALS = [
   { prefix: '/admin', html: '/admin.html', envKey: 'ADMIN_GATE_KEY', cookie: 'admin_gate', cookiePath: '/admin' },
   { prefix: '/support', html: '/support.html', envKey: 'SUPPORT_GATE_KEY', cookie: 'support_gate', cookiePath: '/support' },
-  { prefix: '/agent', html: '/agent.html', envKey: 'AGENT_GATE_KEY', cookie: 'agent_gate', cookiePath: '/agent' },
 ];
 
 function portalFor(pathname) {
