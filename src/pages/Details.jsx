@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Star, Phone, MapPin, Clock, Play, ChevronDown, ExternalLink, MessageSquarePlus } from 'lucide-react';
@@ -36,7 +36,33 @@ export default function Details() {
     if (id) supabase.rpc('record_venue_view', { p_venue_id: id }).then();
   }, [id]);
 
-  const [tab, setTab] = useState('Menu');
+  // Default to whichever of Menu/Activities the venue actually has — a venue
+  // with only activities (no menu) left `tab` stuck on 'Menu', which isn't
+  // in its `tabs` list below, so nothing matched and the page looked empty
+  // until the user clicked a tab themselves. venue is sometimes still
+  // undefined on the very first render (e.g. a direct link to /details/:id,
+  // loaded before venuesData's initial fetch resolves), so a plain lazy
+  // initializer alone isn't enough — the effect below applies the same
+  // default once venue data actually arrives, but only if the user hasn't
+  // already picked a tab themselves by then.
+  const autoSelectedTab = useRef(false);
+  const [tab, setTab] = useState(() => {
+    if (venue?.hasMenu) return 'Menu';
+    if (venue?.hasActivities) return 'Activities';
+    return 'Reviews';
+  });
+
+  useEffect(() => {
+    if (autoSelectedTab.current || !venue) return;
+    autoSelectedTab.current = true;
+    if (venue.hasMenu) setTab('Menu');
+    else if (venue.hasActivities) setTab('Activities');
+  }, [venue]);
+
+  const selectTab = (t) => {
+    autoSelectedTab.current = true;
+    setTab(t);
+  };
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [reportItem, setReportItem] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
@@ -176,7 +202,7 @@ export default function Details() {
         </div>
 
         <button
-          onClick={() => setTab('Reviews')}
+          onClick={() => selectTab('Reviews')}
           className="flex items-center gap-3 rounded-2xl bg-white px-5 py-3 text-left shadow-card transition hover:shadow-card-hover dark:bg-[#1c1c1e] lg:flex-col lg:items-end lg:bg-transparent lg:p-0 lg:shadow-none"
         >
           <div className="flex items-center gap-1.5 text-lg font-bold text-ink dark:text-white">
@@ -194,7 +220,7 @@ export default function Details() {
         {tabs.map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => selectTab(t)}
             className={`relative shrink-0 pb-3 text-sm font-semibold transition-colors ${
               tab === t
                 ? 'text-ink dark:text-white'
