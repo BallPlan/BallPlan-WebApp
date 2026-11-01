@@ -5,6 +5,7 @@ import logoIcon from '../assets/logo-icon.png';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useFavorites } from '../context/FavoritesContext';
 import ConfirmDialog from './ConfirmDialog';
 
 const links = [
@@ -18,6 +19,7 @@ export default function Sidebar() {
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const favoriteCount = useFavorites().favoriteIds.length;
   const navigate = useNavigate();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
@@ -46,6 +48,11 @@ export default function Sidebar() {
             {to === '/notifications' && unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
                 {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            {to === '/favorites' && favoriteCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-white ring-2 ring-cream dark:ring-[#121212]">
+                {favoriteCount > 9 ? '9+' : favoriteCount}
               </span>
             )}
             <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">

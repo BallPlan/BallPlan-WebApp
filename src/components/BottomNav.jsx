@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Home, Heart, Compass, Bell, ClipboardList } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 const links = [
   { to: '/', icon: Home, label: 'Home' },
@@ -14,6 +15,7 @@ const links = [
 export default function BottomNav() {
   const { totalItems } = useCart();
   const { unreadCount } = useNotifications();
+  const favoriteCount = useFavorites().favoriteIds.length;
 
   return (
     <>
@@ -37,6 +39,11 @@ export default function BottomNav() {
               {to === '/notifications' && unreadCount > 0 && (
                 <span className="absolute -right-2 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+              {to === '/favorites' && favoriteCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white dark:ring-[#1c1c1e]">
+                  {favoriteCount > 9 ? '9+' : favoriteCount}
                 </span>
               )}
             </span>

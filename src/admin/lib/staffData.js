@@ -45,7 +45,13 @@ export function getSupportStaff() {
 
 async function callFn(name, body) {
   const { data, error } = await supabase.functions.invoke(name, { body });
-  if (error) throw error;
+  if (error) {
+    // On a non-2xx reply supabase-js only says "Edge Function returned a
+    // non-2xx status code" — the function's own reason (e.g. "already
+    // registered") is in the response body, so surface that instead.
+    const reason = await error.context?.json?.().then((b) => b?.error).catch(() => null);
+    throw reason ? new Error(reason) : error;
+  }
   if (data?.error) throw new Error(data.error);
   return data;
 }
