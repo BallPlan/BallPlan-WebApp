@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { squareAvatarBlob } from '../../utils/resizeImage';
 
 const AdminAuthContext = createContext(null);
 
 async function loadProfile(userId) {
   const { data } = await supabase
     .from('profiles')
-    .select('id, email, first_name, last_name, role, status')
+    .select('id, email, first_name, last_name, name, role, status, avatar_url')
     .eq('id', userId)
     .single();
   return data || null;
@@ -78,6 +79,35 @@ export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
 
   const signOut = () => supabase.auth.signOut();
 
+  const updateOwnProfile = async (patch) => {
+    if (!session?.user) throw new Error('Not signed in');
+    const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
+    if (error) throw error;
+    setProfile((p) => ({ ...p, ...patch }));
+  };
+
+  // Same profile-picture flow as the agent portal (AgentAuthContext): a
+  // small square JPEG at avatars/<user id>/avatar.jpg, ?v= busts the cache.
+  const uploadAvatar = async (file) => {
+    if (!session?.user) throw new Error('Not signed in');
+    const blob = await squareAvatarBlob(file);
+    const path = `${session.user.id}/avatar.jpg`;
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '3600' });
+    if (error) throw error;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const url = `${data.publicUrl}?v=${Date.now()}`;
+    await updateOwnProfile({ avatar_url: url });
+    return url;
+  };
+
+  const removeAvatar = async () => {
+    if (!session?.user) throw new Error('Not signed in');
+    await updateOwnProfile({ avatar_url: null });
+    await supabase.storage.from('avatars').remove([`${session.user.id}/avatar.jpg`]);
+  };
+
   return (
     <AdminAuthContext.Provider
       value={{
@@ -86,6 +116,9 @@ export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
         isStaff: isStaffProfile(profile),
         signIn,
         signOut,
+        updateOwnProfile,
+        uploadAvatar,
+        removeAvatar,
       }}
     >
       {children}

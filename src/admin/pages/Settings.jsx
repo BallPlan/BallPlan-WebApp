@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   User,
   ShieldCheck,
@@ -9,13 +9,13 @@ import {
   Ban,
   KeyRound,
   Copy,
+  Loader2,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ActionMenu from '../components/ActionMenu';
-import { fileToDataUrl } from '../components/MediaInput';
 import PasswordInput from '../../components/PasswordInput';
-import { useAdminProfileStore, getAdminProfile, updateAdminProfile, getAdminPassword, setAdminPassword } from '../../shared/store';
+import { getAdminPassword, setAdminPassword } from '../../shared/store';
 import {
   useStaffStore,
   getAgents,
@@ -45,36 +45,70 @@ const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 const labelCls = 'mb-1.5 block text-xs font-semibold text-ink/50 dark:text-white/50';
 
-function ProfileSection() {
-  const { notify } = useToast();
-  const profileSnapshot = useAdminProfileStore();
-  const profile = useMemo(() => getAdminProfile(), [profileSnapshot]);
-  const [form, setForm] = useState(profile);
+const ROLE_LABEL = { owner: 'Admin', support: 'Support' };
 
-  useEffect(() => setForm(profile), [profile]);
+// The signed-in account's real profile row (AdminAuthContext), same as the
+// agent portal's settings — not the old localStorage placeholder.
+function ProfileSection() {
+  const { user, updateOwnProfile, uploadAvatar, removeAvatar } = useAdminAuth();
+  const { notify } = useToast();
+  const [form, setForm] = useState({ firstName: '', lastName: '' });
+  const [saving, setSaving] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (user) setForm({ firstName: user.first_name || '', lastName: user.last_name || '' });
+  }, [user?.first_name, user?.last_name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const initials = (`${form.firstName[0] || ''}${form.lastName[0] || ''}` || user?.email?.[0] || 'A').toUpperCase();
 
   const handlePhoto = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
-    setForm((f) => ({ ...f, photo: dataUrl }));
+    setPhotoBusy(true);
+    try {
+      await uploadAvatar(file);
+      notify('Profile picture updated.', 'success');
+    } catch (err) {
+      notify(err.message || 'Could not upload your picture.', 'warning');
+    } finally {
+      setPhotoBusy(false);
+    }
   };
 
-  const handleSave = (e) => {
+  const handleRemovePhoto = async () => {
+    setPhotoBusy(true);
+    try {
+      await removeAvatar();
+      notify('Profile picture removed.', 'success');
+    } catch (err) {
+      notify(err.message || 'Could not remove your picture.', 'warning');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
-      notify('First name, last name and email are required.', 'warning');
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      notify('First name and last name are required.', 'warning');
       return;
     }
-    updateAdminProfile({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim().toLowerCase(),
-      role: form.role,
-      photo: form.photo,
-    });
-    notify('Profile updated.', 'success');
+    setSaving(true);
+    try {
+      await updateOwnProfile({
+        first_name: form.firstName.trim(),
+        last_name: form.lastName.trim(),
+        name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      });
+      notify('Profile updated.', 'success');
+    } catch {
+      notify('Could not update your profile.', 'warning');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -82,21 +116,45 @@ function ProfileSection() {
       <h2 className="text-sm font-bold text-ink dark:text-white">Profile Information</h2>
       <p className="mt-1 text-sm text-ink/50 dark:text-white/50">Update your display name and photo.</p>
 
-      <form onSubmit={handleSave} className="mt-5 space-y-4">
-        <div className="flex items-center gap-4">
-          {form.photo ? (
-            <img src={form.photo} alt="" className="h-16 w-16 rounded-full object-cover" />
+      <div className="mt-5 flex items-center gap-4">
+        <div className="relative h-16 w-16 shrink-0">
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt="Your profile" className="h-16 w-16 rounded-full object-cover" />
           ) : (
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand text-xl font-bold text-white">
-              {(form.firstName?.[0] || 'A') + (form.lastName?.[0] || '')}
+              {initials}
             </span>
           )}
-          <label className="flex cursor-pointer items-center gap-1.5 rounded-full bg-brand/10 px-4 py-2 text-xs font-bold text-brand transition hover:bg-brand hover:text-white">
-            <Camera size={14} /> Change Photo
-            <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-          </label>
+          {photoBusy && (
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white">
+              <Loader2 size={18} className="animate-spin" />
+            </span>
+          )}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={photoBusy}
+            onClick={() => fileRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-full bg-brand/10 px-4 py-2 text-xs font-bold text-brand transition hover:bg-brand hover:text-white disabled:opacity-60"
+          >
+            <Camera size={14} /> {user?.avatar_url ? 'Change Photo' : 'Upload Photo'}
+          </button>
+          {user?.avatar_url && (
+            <button
+              type="button"
+              disabled={photoBusy}
+              onClick={handleRemovePhoto}
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-60 dark:hover:bg-red-500/10"
+            >
+              <Trash2 size={13} /> Remove
+            </button>
+          )}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhoto} />
+        </div>
+      </div>
 
+      <form onSubmit={handleSave} className="mt-5 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelCls}>First Name</span>
@@ -118,24 +176,28 @@ function ProfileSection() {
 
         <label className="block">
           <span className={labelCls}>Email Address</span>
-          <input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            className={inputCls}
-          />
+          <input value={user?.email || ''} disabled className={`${inputCls} cursor-not-allowed opacity-60`} />
         </label>
 
         <label className="block">
           <span className={labelCls}>Role</span>
-          <input value={form.role} disabled className={`${inputCls} cursor-not-allowed opacity-60`} />
+          <input
+            value={ROLE_LABEL[user?.role] || ''}
+            disabled
+            className={`${inputCls} cursor-not-allowed opacity-60`}
+          />
         </label>
+
+        <p className="text-xs text-ink/40 dark:text-white/40">
+          Your email is your sign-in and can't be changed here.
+        </p>
 
         <button
           type="submit"
-          className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark"
+          disabled={saving}
+          className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:opacity-70"
         >
-          Save Changes
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
     </div>
@@ -458,7 +520,9 @@ export default function Settings() {
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-ink dark:text-white">Settings</h1>
-      <p className="mt-1 text-sm text-ink/50 dark:text-white/50">Manage your admin profile, security and team.</p>
+      <p className="mt-1 text-sm text-ink/50 dark:text-white/50">
+        {isOwner ? 'Manage your admin profile, security and team.' : 'Manage your profile and the agent team.'}
+      </p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {visibleTabs.map((t) => (

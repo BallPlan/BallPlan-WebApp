@@ -34,7 +34,9 @@ export default function AdminTopHeader({ onOpenMobileMenu }) {
     if (query.trim()) navigate(`/venues?q=${encodeURIComponent(query.trim())}`);
   };
 
-  const initials = (auth?.email || 'A').slice(0, 2).toUpperCase();
+  const fullName = [auth?.first_name, auth?.last_name].filter(Boolean).join(' ').trim();
+  const displayName = fullName || auth?.email?.split('@')[0] || 'Admin';
+  const initials = (fullName ? `${auth.first_name?.[0] || ''}${auth.last_name?.[0] || ''}` : (auth?.email || 'A').slice(0, 2)).toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink/8 bg-white/90 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-[#15161a]/90 sm:px-6">
@@ -123,12 +125,14 @@ export default function AdminTopHeader({ onOpenMobileMenu }) {
             }}
             className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-ink/5 dark:hover:bg-white/10"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              {initials}
-            </span>
-            <span className="hidden text-sm font-semibold text-ink dark:text-white sm:block">
-              {auth?.email?.split('@')[0] || 'Admin'}
-            </span>
+            {auth?.avatar_url ? (
+              <img src={auth.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {initials}
+              </span>
+            )}
+            <span className="hidden text-sm font-semibold text-ink dark:text-white sm:block">{displayName}</span>
             <ChevronDown size={14} className="hidden text-ink/40 dark:text-white/40 sm:block" />
           </button>
           <AnimatePresence>
