@@ -11,6 +11,7 @@ import { NotificationsProvider } from './context/NotificationsContext';
 import PageViewTracker from './components/PageViewTracker';
 
 import Layout from './components/Layout';
+import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import Details from './pages/Details';
@@ -44,6 +45,7 @@ export default function App() {
                   <ReviewsProvider>
                     <BrowserRouter>
                       <PageViewTracker />
+                      <ScrollToTop />
                       <Routes>
                         <Route path="/signin" element={<SignIn />} />
                         <Route path="/signup" element={<SignUp />} />

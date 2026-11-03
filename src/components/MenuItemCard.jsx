@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
-import { Flag, Check, Info, Plus } from 'lucide-react';
+import { Flag, Check, Info } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
 import PriceTrendBadge from './PriceTrendBadge';
 import { formatNaira } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
 // On phones (two-up grid) the price-change badge moves from beside the
-// name to the image's top-left corner, and "Add to plan" becomes a round + button, so
-// the name gets the full card width. From sm: up the layout is unchanged.
+// name to the image's top-left corner (so the name gets the full card
+// width), and "Add to plan" is a full-width button under the price so it
+// stays on one line. From sm: up the layout is unchanged.
 export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDetails }) {
   const { trend, changePct } = getPriceHistory(item);
 
@@ -47,7 +48,7 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
             <PriceTrendBadge trend={trend} changePct={changePct} className="hidden shrink-0 sm:inline-flex" />
           )}
         </div>
-        <div className="mt-auto flex items-center justify-between gap-2">
+        <div className="mt-auto flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <span className="text-sm font-bold text-brand">{formatNaira(item.price)}</span>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -56,22 +57,16 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
               e.stopPropagation();
               onAdd();
             }}
-            aria-label={inCart ? `${item.name} added to plan` : `Add ${item.name} to plan`}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full text-xs font-semibold shadow-sm transition sm:h-auto sm:w-auto sm:px-3 sm:py-1.5 ${
+            className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
               inCart ? 'bg-emerald-500 text-white' : 'bg-brand text-white hover:bg-brand-dark'
             }`}
           >
             {inCart ? (
               <>
-                <Check size={15} strokeWidth={2.5} className="sm:hidden" aria-hidden="true" />
-                <Check size={13} className="hidden sm:block" aria-hidden="true" />
-                <span className="hidden sm:inline">Added</span>
+                <Check size={13} /> Added
               </>
             ) : (
-              <>
-                <Plus size={17} strokeWidth={2.5} className="sm:hidden" aria-hidden="true" />
-                <span className="hidden sm:inline">Add to plan</span>
-              </>
+              'Add to plan'
             )}
           </motion.button>
         </div>
