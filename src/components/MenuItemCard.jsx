@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
-import { Flag, Check, Info } from 'lucide-react';
+import { Flag, Check, Info, Plus } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
 import PriceTrendBadge from './PriceTrendBadge';
 import { formatNaira } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
+// On phones (two-up grid) the price-change badge moves from beside the
+// name to the image's top-left corner, and "Add to plan" becomes a round + button, so
+// the name gets the full card width. From sm: up the layout is unchanged.
 export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDetails }) {
   const { trend, changePct } = getPriceHistory(item);
 
@@ -12,7 +15,7 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
     <motion.div
       whileHover={{ y: -4 }}
       onClick={onViewDetails}
-      className="flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-shadow hover:shadow-card-hover dark:bg-[#1c1c1e]"
+      className="flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl bg-white shadow-card transition-shadow hover:shadow-card-hover dark:bg-[#1c1c1e]"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <ImageWithFallback
@@ -31,11 +34,18 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
         >
           <Info size={14} />
         </button>
+        {trend !== 'flat' && (
+          <PriceTrendBadge trend={trend} changePct={changePct} onImage className="absolute left-2 top-2 sm:hidden" />
+        )}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-3.5">
+      <div className="flex flex-1 flex-col gap-1.5 p-2.5 sm:gap-2 sm:p-3.5">
         <div className="flex items-start justify-between gap-1.5">
-          <h4 className="text-sm font-bold leading-tight text-ink dark:text-white">{item.name}</h4>
-          {trend !== 'flat' && <PriceTrendBadge trend={trend} changePct={changePct} className="shrink-0" />}
+          <h4 className="line-clamp-2 text-[13px] font-bold leading-snug text-ink dark:text-white sm:line-clamp-none sm:text-sm sm:leading-tight">
+            {item.name}
+          </h4>
+          {trend !== 'flat' && (
+            <PriceTrendBadge trend={trend} changePct={changePct} className="hidden shrink-0 sm:inline-flex" />
+          )}
         </div>
         <div className="mt-auto flex items-center justify-between gap-2">
           <span className="text-sm font-bold text-brand">{formatNaira(item.price)}</span>
@@ -46,16 +56,22 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
               e.stopPropagation();
               onAdd();
             }}
-            className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+            aria-label={inCart ? `${item.name} added to plan` : `Add ${item.name} to plan`}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full text-xs font-semibold shadow-sm transition sm:h-auto sm:w-auto sm:px-3 sm:py-1.5 ${
               inCart ? 'bg-emerald-500 text-white' : 'bg-brand text-white hover:bg-brand-dark'
             }`}
           >
             {inCart ? (
               <>
-                <Check size={13} /> Added
+                <Check size={15} strokeWidth={2.5} className="sm:hidden" aria-hidden="true" />
+                <Check size={13} className="hidden sm:block" aria-hidden="true" />
+                <span className="hidden sm:inline">Added</span>
               </>
             ) : (
-              'Add to plan'
+              <>
+                <Plus size={17} strokeWidth={2.5} className="sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">Add to plan</span>
+              </>
             )}
           </motion.button>
         </div>
@@ -64,9 +80,9 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
             e.stopPropagation();
             onReport();
           }}
-          className="flex items-center gap-1 pt-1 text-[11px] font-medium text-ink/35 transition hover:text-brand dark:text-white/35"
+          className="flex items-center gap-1 whitespace-nowrap pt-1 text-[10px] font-medium text-ink/35 transition hover:text-brand dark:text-white/35 sm:text-[11px]"
         >
-          <Flag size={11} /> Report Incorrect price
+          <Flag size={11} className="shrink-0" /> Report Incorrect price
         </button>
       </div>
     </motion.div>

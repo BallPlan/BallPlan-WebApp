@@ -8,17 +8,18 @@ const CONFIG = {
   flat: { icon: Minus, color: '#898781', bg: 'rgba(137,135,129,0.09)', label: () => 'Steady' },
 };
 
-export default function PriceTrendBadge({ trend, changePct, size = 'sm', className = '' }) {
+// `onImage`: solid white pill (tinted text) so it stays readable over a photo.
+export default function PriceTrendBadge({ trend, changePct, size = 'sm', className = '', onImage = false }) {
   const cfg = CONFIG[trend] || CONFIG.flat;
   const Icon = cfg.icon;
   const isSmall = size === 'sm';
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full font-bold ${
+      className={`inline-flex items-center gap-1 rounded-full font-bold ${onImage ? 'shadow-md backdrop-blur' : ''} ${
         isSmall ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'
       } ${className}`}
-      style={{ color: cfg.color, backgroundColor: cfg.bg }}
+      style={{ color: cfg.color, backgroundColor: onImage ? 'rgba(255,255,255,0.95)' : cfg.bg }}
     >
       <Icon size={isSmall ? 11 : 13} strokeWidth={2.5} />
       {cfg.label(changePct)}

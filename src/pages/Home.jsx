@@ -59,17 +59,17 @@ export default function Home() {
       </div>
 
       {!loaded ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <VenueCardSkeleton key={i} />
+            <VenueCardSkeleton key={i} compact />
           ))}
         </div>
       ) : venues.length === 0 ? (
         <p className="py-16 text-center text-ink/50 dark:text-white/50">No places found in this category yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {venues.map((venue, i) => (
-            <VenueCard venue={venue} key={venue.id} index={i} />
+            <VenueCard venue={venue} key={venue.id} index={i} compact />
           ))}
         </div>
       )}

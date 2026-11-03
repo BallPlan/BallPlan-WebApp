@@ -237,7 +237,7 @@ export default function Details() {
 
       <div className="mt-6">
         {tab === 'Menu' && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {venue.menu.map((item) => {
               return (
                 <MenuItemCard
@@ -254,7 +254,7 @@ export default function Details() {
         )}
 
         {tab === 'Activities' && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {venue.activities.map((item) => {
               return (
                 <MenuItemCard
