@@ -73,7 +73,11 @@ export default function Details() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { isInCart, addWithinBudget } = useBudgetAwareCart();
+  const { items: cartItems, updateQty, addWithinBudget } = useBudgetAwareCart();
+  const qtyInPlan = (itemId) => cartItems.find((i) => i.venueId === id && i.itemId === itemId)?.qty || 0;
+  // First add shows the "Added to your plan" toast; + on the stepper is quiet.
+  const addToPlan = (item, kind) => addWithinBudget(venue, item, kind, { quiet: qtyInPlan(item.id) > 0 });
+  const removeOneFromPlan = (item) => updateQty(`${venue.id}:${item.id}`, qtyInPlan(item.id) - 1);
   const { getReviews, getSummary, deleteReview } = useReviews();
 
   const handleToggleFavorite = () => {
@@ -247,8 +251,9 @@ export default function Details() {
                   <MenuItemCard
                     key={item.id}
                     item={item}
-                    inCart={isInCart(venue.id, item.id)}
-                    onAdd={() => addWithinBudget(venue, item, 'menu')}
+                    qty={qtyInPlan(item.id)}
+                    onAdd={() => addToPlan(item, 'menu')}
+                    onDecrement={() => removeOneFromPlan(item)}
                     onReport={() => setReportItem(item)}
                     onViewDetails={() => setDetailItem(item)}
                   />
@@ -265,8 +270,9 @@ export default function Details() {
                 <MenuItemCard
                   key={item.id}
                   item={item}
-                  inCart={isInCart(venue.id, item.id)}
-                  onAdd={() => addWithinBudget(venue, item, 'activity')}
+                  qty={qtyInPlan(item.id)}
+                  onAdd={() => addToPlan(item, 'activity')}
+                  onDecrement={() => removeOneFromPlan(item)}
                   onReport={() => setReportItem(item)}
                   onViewDetails={() => setDetailItem(item)}
                 />
@@ -417,11 +423,11 @@ export default function Details() {
       <ReportPriceModal item={reportItem} venue={venue} onClose={() => setReportItem(null)} />
       <MenuItemModal
         item={detailItem}
-        inCart={detailItem ? isInCart(venue.id, detailItem.id) : false}
+        qty={detailItem ? qtyInPlan(detailItem.id) : 0}
         onAdd={() =>
-          detailItem &&
-          addWithinBudget(venue, detailItem, venue.menu.some((m) => m.id === detailItem.id) ? 'menu' : 'activity')
+          detailItem && addToPlan(detailItem, venue.menu.some((m) => m.id === detailItem.id) ? 'menu' : 'activity')
         }
+        onDecrement={() => detailItem && removeOneFromPlan(detailItem)}
         onReport={() => {
           setReportItem(detailItem);
           setDetailItem(null);

@@ -8,7 +8,10 @@ export function useBudgetAwareCart() {
   const { budget, budgetActive } = useBudget();
   const { notify } = useToast();
 
-  const addWithinBudget = (venue, item, kind = 'menu') => {
+  // `quiet`: skip the "Added to your plan" toast — used by the + on a
+  // quantity stepper, where the number changing is feedback enough. The
+  // budget check still applies.
+  const addWithinBudget = (venue, item, kind = 'menu', { quiet = false } = {}) => {
     if (budgetActive && budget != null) {
       const projected = cart.totalPrice + item.price;
       if (projected > budget) {
@@ -23,7 +26,7 @@ export function useBudgetAwareCart() {
       }
     }
     cart.addItem(venue, item, kind);
-    notify(`Added "${item.name}" to your plan.`, 'success');
+    if (!quiet) notify(`Added "${item.name}" to your plan.`, 'success');
     return true;
   };
 

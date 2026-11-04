@@ -1,15 +1,16 @@
 import { motion } from 'framer-motion';
-import { Flag, Check, Info } from 'lucide-react';
+import { Flag, Info } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
 import PriceTrendBadge from './PriceTrendBadge';
+import PlanQuantityButton from './PlanQuantityButton';
 import { formatNaira } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
 // On phones (two-up grid) the price-change badge moves from beside the
 // name to the image's top-left corner (so the name gets the full card
-// width), and "Add to plan" is a full-width button under the price so it
-// stays on one line. From sm: up the layout is unchanged.
-export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDetails }) {
+// width), and the Add to plan button / quantity stepper is full width
+// under the price so it stays on one line. From sm: up the layout is unchanged.
+export default function MenuItemCard({ item, qty = 0, onAdd, onDecrement, onReport, onViewDetails }) {
   const { trend, changePct } = getPriceHistory(item);
 
   return (
@@ -50,34 +51,22 @@ export default function MenuItemCard({ item, inCart, onAdd, onReport, onViewDeta
         </div>
         <div className="mt-auto flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <span className="text-sm font-bold text-brand">{formatNaira(item.price)}</span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAdd();
-            }}
-            className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-              inCart ? 'bg-emerald-500 text-white' : 'bg-brand text-white hover:bg-brand-dark'
-            }`}
-          >
-            {inCart ? (
-              <>
-                <Check size={13} /> Added
-              </>
-            ) : (
-              'Add to plan'
-            )}
-          </motion.button>
+          <PlanQuantityButton
+            qty={qty}
+            itemName={item.name}
+            onAdd={onAdd}
+            onDecrement={onDecrement}
+            className="w-full sm:w-28"
+          />
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onReport();
           }}
-          className="flex items-center gap-1 whitespace-nowrap pt-1 text-[10px] font-medium text-ink/35 transition hover:text-brand dark:text-white/35 sm:text-[11px]"
+          className="mx-auto mt-0.5 flex max-w-full items-center justify-center gap-1 whitespace-nowrap rounded-full border border-ink/12 px-2.5 py-1 text-[10px] font-semibold text-ink/50 transition hover:border-brand hover:bg-brand/5 hover:text-brand dark:border-white/15 dark:text-white/50 dark:hover:border-brand dark:hover:text-brand sm:text-[11px]"
         >
-          <Flag size={11} className="shrink-0" /> Report Incorrect price
+          <Flag size={11} className="shrink-0" /> Report <span className="hidden min-[360px]:inline">Incorrect</span> price
         </button>
       </div>
     </motion.div>

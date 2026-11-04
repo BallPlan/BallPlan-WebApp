@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Flag, Check, ChefHat, ShieldCheck } from 'lucide-react';
+import { X, Flag, ChefHat, ShieldCheck } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
 import Sparkline from './Sparkline';
 import PriceTrendBadge from './PriceTrendBadge';
+import PlanQuantityButton from './PlanQuantityButton';
 import { formatNaira } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
-export default function MenuItemModal({ item, inCart, onAdd, onReport, onClose }) {
+export default function MenuItemModal({ item, qty = 0, onAdd, onDecrement, onReport, onClose }) {
   if (!item) return null;
 
   const { points, trend, changePct, daysAgo, verifiedCount } = getPriceHistory(item);
@@ -70,22 +71,14 @@ export default function MenuItemModal({ item, inCart, onAdd, onReport, onClose }
             </div>
 
             <div className="mt-5 flex items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={onAdd}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-bold shadow-soft transition ${
-                  inCart ? 'bg-emerald-500 text-white' : 'bg-brand text-white hover:bg-brand-dark'
-                }`}
-              >
-                {inCart ? (
-                  <>
-                    <Check size={16} /> Added to plan
-                  </>
-                ) : (
-                  'Add to plan'
-                )}
-              </motion.button>
+              <PlanQuantityButton
+                qty={qty}
+                itemName={item.name}
+                onAdd={onAdd}
+                onDecrement={onDecrement}
+                size="lg"
+                className="flex-1"
+              />
               <button
                 onClick={onReport}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 text-ink/40 transition hover:border-brand/40 hover:text-brand dark:border-white/10 dark:text-white/40"

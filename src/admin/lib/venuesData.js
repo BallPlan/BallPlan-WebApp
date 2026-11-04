@@ -52,6 +52,7 @@ function normalizeVenue(v, itemsByVenue, postersById = {}) {
     createdBy: v.created_by,
     postedBy: v.created_by ? toPostedBy(postersById[v.created_by]) || { id: v.created_by, name: 'Deleted account', role: null, roleLabel: '', avatarUrl: null } : null,
     createdAt: v.created_at,
+    updatedAt: v.updated_at,
     menu: items.filter((i) => i.kind === 'menu').map(toFormItem),
     activities: items.filter((i) => i.kind === 'activity').map(toFormItem),
   };

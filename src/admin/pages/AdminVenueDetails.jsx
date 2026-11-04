@@ -280,6 +280,20 @@ export default function AdminVenueDetails() {
                   {venue.createdAt ? new Date(venue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 </span>
               </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-ink/50 dark:text-white/50">Last updated</span>
+                <span className="text-right font-semibold text-ink dark:text-white" title={venue.updatedAt || ''}>
+                  {venue.updatedAt
+                    ? new Date(venue.updatedAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : '—'}
+                </span>
+              </div>
             </div>
           </div>
 
