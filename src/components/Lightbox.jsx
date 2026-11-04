@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
+import { isVideoUrl } from '../utils/uploadMedia';
 
 export default function Lightbox({ images, index, onClose, onChange }) {
   if (index == null) return null;
@@ -60,12 +61,22 @@ export default function Lightbox({ images, index, onClose, onChange }) {
           onClick={(e) => e.stopPropagation()}
           className="max-h-[85vh] max-w-[92vw]"
         >
-          <ImageWithFallback
-            src={images[index]}
-            seed={`lightbox-${index}`}
-            alt={`Photo ${index + 1}`}
-            className="max-h-[85vh] max-w-[92vw] rounded-xl object-contain"
-          />
+          {isVideoUrl(images[index]) ? (
+            <video
+              src={images[index]}
+              className="max-h-[85vh] max-w-[92vw] rounded-xl"
+              controls
+              autoPlay
+              playsInline
+            />
+          ) : (
+            <ImageWithFallback
+              src={images[index]}
+              seed={`lightbox-${index}`}
+              alt={`Photo ${index + 1}`}
+              className="max-h-[85vh] max-w-[92vw] rounded-xl object-contain"
+            />
+          )}
         </motion.div>
 
         {images.length > 1 && (

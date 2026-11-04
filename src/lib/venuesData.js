@@ -20,7 +20,7 @@ function subscribe(listener) {
 }
 
 function toFormItem(i) {
-  return { id: i.id, name: i.name, image: i.image, price: i.price, desc: i.description };
+  return { id: i.id, name: i.name, image: i.image, price: i.price, desc: i.description, menuType: i.menu_type || 'food' };
 }
 
 function normalizeVenue(v, itemsByVenue) {

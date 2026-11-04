@@ -10,6 +10,7 @@ import NigeriaPhoneInput, { isValidNigeriaPhone } from '../../components/Nigeria
 import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeriaStates';
 import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../../admin/components/MediaInput';
+import { supabase } from '../lib/supabaseClient';
 
 const emptyVenue = {
   name: '',
@@ -47,10 +48,10 @@ function Field({ label, children }) {
 const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price' }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', withMenuType = false }) {
   const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
-  const add = () => onChange([...items, { id: `new-${Date.now()}`, name: '', image: '', price: '', desc: '' }]);
+  const add = () => onChange([...items, { id: `new-${Date.now()}`, name: '', image: '', price: '', desc: '', menuType: 'food' }]);
 
   return (
     <div>
@@ -76,8 +77,30 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price' }) {
                 className={inputCls}
               />
             </div>
+            {withMenuType && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-xs font-semibold text-ink/50 dark:text-white/50">Type</span>
+                {[
+                  ['food', 'Food'],
+                  ['drink', 'Drink'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => update(i, { menuType: value })}
+                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                      (item.menuType || 'food') === value
+                        ? 'bg-brand text-white'
+                        : 'bg-ink/5 text-ink/60 hover:bg-ink/10 dark:bg-white/10 dark:text-white/60'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mt-2">
-              <MediaInput value={item.image} onChange={(v) => update(i, { image: v })} placeholder="Image URL" />
+              <MediaInput client={supabase} value={item.image} onChange={(v) => update(i, { image: v })} placeholder="Image URL" accept="image/*" />
             </div>
             <textarea
               value={item.desc || ''}
@@ -316,14 +339,14 @@ export default function AgentVenueForm() {
           </div>
           <Field label="Hero photo or video">
             <div className="mt-1">
-              <MediaInput value={venue.hero} onChange={(v) => set({ hero: v })} placeholder="Hero image or video URL" />
+              <MediaInput client={supabase} value={venue.hero} onChange={(v) => set({ hero: v })} placeholder="Hero image or video URL" />
             </div>
           </Field>
           <div className="mt-3 space-y-2">
             {venue.gallery.map((url, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="flex-1">
-                  <MediaInput value={url} onChange={(v) => handleGalleryChange(i, v)} placeholder="Gallery image or video URL" />
+                  <MediaInput client={supabase} value={url} onChange={(v) => handleGalleryChange(i, v)} placeholder="Gallery image or video URL" />
                 </div>
                 <button type="button" onClick={() => removeGalleryUrl(i)} className="shrink-0 text-red-500">
                   <Trash2 size={15} />
@@ -334,7 +357,7 @@ export default function AgentVenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} withMenuType />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">

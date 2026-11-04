@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { Heart, Star, Phone, MapPin, Clock, Play, ChevronDown, ExternalLink, MessageSquarePlus } from 'lucide-react';
 import { useVenuesStore, getVenueById } from '../lib/venuesData';
 import { supabase } from '../lib/supabaseClient';
-import ImageWithFallback from '../components/ImageWithFallback';
 import BackButton from '../components/BackButton';
 import Lightbox from '../components/Lightbox';
+import VenueGallery from '../components/VenueGallery';
+import MediaView from '../components/MediaView';
+import { isVideoUrl } from '../utils/uploadMedia';
 import MenuItemCard from '../components/MenuItemCard';
 import MenuItemModal from '../components/MenuItemModal';
 import ReportPriceModal from '../components/ReportPriceModal';
@@ -20,7 +22,6 @@ import { openDirections } from '../utils/maps';
 import { getVenueCoords, osmEmbedUrl, osmViewUrl } from '../utils/geo';
 import { useFavorites } from '../context/FavoritesContext';
 import { useBudgetAwareCart } from '../utils/useBudgetAwareCart';
-import { useToast } from '../context/ToastContext';
 import { useReviews } from '../context/ReviewsContext';
 
 export default function Details() {
@@ -64,6 +65,8 @@ export default function Details() {
     setTab(t);
   };
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [menuSection, setMenuSection] = useState(null); // 'food' | 'drink'; null = auto
+  useEffect(() => setMenuSection(null), [id]);
   const [reportItem, setReportItem] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [feesOpen, setFeesOpen] = useState(false);
@@ -71,7 +74,6 @@ export default function Details() {
 
   const { isFavorite, toggleFavorite } = useFavorites();
   const { isInCart, addWithinBudget } = useBudgetAwareCart();
-  const { notify } = useToast();
   const { getReviews, getSummary, deleteReview } = useReviews();
 
   const handleToggleFavorite = () => {
@@ -102,60 +104,37 @@ export default function Details() {
   const coords = getVenueCoords(venue);
   const reviews = getReviews(venue.id);
   const reviewSummary = getSummary(venue.id);
+  // Hero first, then the gallery, without repeats — one list drives the
+  // slideshow, the Photos tab and the full-screen viewer so their indexes match.
+  const media = [...new Set([venue.hero, ...(venue.gallery || [])].filter(Boolean))];
+  const foodItems = venue.menu.filter((m) => (m.menuType || 'food') === 'food');
+  const drinkItems = venue.menu.filter((m) => m.menuType === 'drink');
+  // Default to Food, or Drinks when the venue only has drinks.
+  const menuType = menuSection || (foodItems.length === 0 && drinkItems.length > 0 ? 'drink' : 'food');
+  const menuItems = menuType === 'drink' ? drinkItems : foodItems;
 
   return (
     <div>
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-ink/5 dark:bg-white/5">
-        <div className="relative aspect-[16/10] sm:aspect-[16/8]">
-          <ImageWithFallback
-            src={venue.hero}
-            seed={venue.id}
-            alt={venue.name}
-            className="h-full w-full cursor-pointer object-cover"
-            onClick={() => setLightboxIndex(0)}
-          />
-          <BackButton className="absolute left-4 top-4 bg-white/90 text-ink/70 shadow-md backdrop-blur dark:bg-white/90 dark:text-ink/70" />
-          {venue.hasVideo && (
+      <VenueGallery
+        media={media}
+        venueId={venue.id}
+        alt={venue.name}
+        paused={lightboxIndex != null}
+        onOpen={setLightboxIndex}
+        overlay={
+          <>
+            <BackButton className="absolute left-4 top-4 z-10 bg-white/90 text-ink/70 shadow-md backdrop-blur dark:bg-white/90 dark:text-ink/70" />
             <button
-              onClick={() =>
-                notify(`Playing a walkthrough video of ${venue.name}...`, 'info')
-              }
-              className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-md transition hover:scale-110 hover:bg-white/35"
-              aria-label="Play video"
+              onClick={handleToggleFavorite}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-110"
+              aria-label="Toggle favorite"
             >
-              <span className="absolute inset-0 animate-pulse-ring rounded-full bg-white/40" />
-              <Play size={26} className="relative fill-white" />
+              <Heart size={18} className={favorited ? 'fill-brand text-brand' : 'text-ink/70'} />
             </button>
-          )}
-          <button
-            onClick={handleToggleFavorite}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-110"
-            aria-label="Toggle favorite"
-          >
-            <Heart size={18} className={favorited ? 'fill-brand text-brand' : 'text-ink/70'} />
-          </button>
-        </div>
-
-        {venue.gallery.length > 1 && (
-          <div className="absolute bottom-3 left-3 right-3 flex gap-2 overflow-x-auto">
-            {venue.gallery.slice(0, 4).map((src, i) => (
-              <button
-                key={i}
-                onClick={() => setLightboxIndex(i)}
-                className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl border-2 border-white/70 shadow-md transition hover:scale-105 sm:h-20 sm:w-28"
-              >
-                <ImageWithFallback src={src} seed={`${venue.id}-${i}`} alt="" className="h-full w-full object-cover" />
-                {i === 3 && venue.gallery.length > 4 && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-bold text-white">
-                    +{venue.gallery.length - 3}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
 
       {/* Info */}
       <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -237,19 +216,45 @@ export default function Details() {
 
       <div className="mt-6">
         {tab === 'Menu' && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {venue.menu.map((item) => {
-              return (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  inCart={isInCart(venue.id, item.id)}
-                  onAdd={() => addWithinBudget(venue, item, 'menu')}
-                  onReport={() => setReportItem(item)}
-                  onViewDetails={() => setDetailItem(item)}
-                />
-              );
-            })}
+          <div>
+            <div className="mb-4 flex gap-2">
+              {[
+                ['food', 'Food', foodItems.length],
+                ['drink', 'Drinks', drinkItems.length],
+              ].map(([type, label, n]) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setMenuSection(type)}
+                  aria-pressed={menuType === type}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    menuType === type
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'bg-white text-ink/60 shadow-card hover:text-ink dark:bg-[#1c1c1e] dark:text-white/60 dark:hover:text-white'
+                  }`}
+                >
+                  {label} <span className={menuType === type ? 'text-white/70' : 'text-ink/35 dark:text-white/35'}>({n})</span>
+                </button>
+              ))}
+            </div>
+            {menuItems.length === 0 ? (
+              <p className="py-10 text-center text-sm text-ink/40 dark:text-white/40">
+                No {menuType === 'drink' ? 'drinks' : 'food'} on this menu yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {menuItems.map((item) => (
+                  <MenuItemCard
+                    key={item.id}
+                    item={item}
+                    inCart={isInCart(venue.id, item.id)}
+                    onAdd={() => addWithinBudget(venue, item, 'menu')}
+                    onReport={() => setReportItem(item)}
+                    onViewDetails={() => setDetailItem(item)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -313,13 +318,18 @@ export default function Details() {
 
         {tab === 'Photos' && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {venue.gallery.map((src, i) => (
+            {media.map((src, i) => (
               <button
                 key={i}
                 onClick={() => setLightboxIndex(i)}
-                className="aspect-square overflow-hidden rounded-xl shadow-card transition hover:opacity-90"
+                className="relative aspect-square overflow-hidden rounded-xl shadow-card transition hover:opacity-90"
               >
-                <ImageWithFallback src={src} seed={`${venue.id}-p-${i}`} alt="" className="h-full w-full object-cover" />
+                <MediaView src={src} seed={`${venue.id}-p-${i}`} alt="" className="h-full w-full object-cover" />
+                {isVideoUrl(src) && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25 text-white">
+                    <Play size={22} className="fill-white" />
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -358,7 +368,7 @@ export default function Details() {
             </div>
 
             <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white p-4 shadow-card dark:bg-[#1c1c1e]">
-              <ImageWithFallback src={venue.hero} seed={venue.id} alt="" className="h-12 w-12 rounded-full object-cover" />
+              <MediaView src={venue.hero} seed={venue.id} alt="" className="h-12 w-12 rounded-full object-cover" />
               <div className="flex-1">
                 <p className="font-bold text-ink dark:text-white">{venue.name}</p>
                 <p className="text-sm text-ink/50 dark:text-white/50">{venue.phone || 'No phone number on file'}</p>
@@ -399,7 +409,7 @@ export default function Details() {
       </div>
 
       <Lightbox
-        images={venue.gallery}
+        images={media}
         index={lightboxIndex}
         onClose={() => setLightboxIndex(null)}
         onChange={setLightboxIndex}
