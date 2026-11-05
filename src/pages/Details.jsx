@@ -9,6 +9,7 @@ import Lightbox from '../components/Lightbox';
 import VenueGallery from '../components/VenueGallery';
 import MediaView from '../components/MediaView';
 import { isVideoUrl } from '../utils/uploadMedia';
+import { groupBySection } from '../utils/itemSections';
 import MenuItemCard from '../components/MenuItemCard';
 import MenuItemModal from '../components/MenuItemModal';
 import ReportPriceModal from '../components/ReportPriceModal';
@@ -65,8 +66,9 @@ export default function Details() {
     setTab(t);
   };
   const [lightboxIndex, setLightboxIndex] = useState(null);
-  const [menuSection, setMenuSection] = useState(null); // 'food' | 'drink'; null = auto
-  useEffect(() => setMenuSection(null), [id]);
+  // Chosen category per tab ({ Menu: 'Drinks', Activities: … }); unset = first.
+  const [sectionPick, setSectionPick] = useState({});
+  useEffect(() => setSectionPick({}), [id]);
   const [reportItem, setReportItem] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [feesOpen, setFeesOpen] = useState(false);
@@ -111,11 +113,53 @@ export default function Details() {
   // Hero first, then the gallery, without repeats — one list drives the
   // slideshow, the Photos tab and the full-screen viewer so their indexes match.
   const media = [...new Set([venue.hero, ...(venue.gallery || [])].filter(Boolean))];
-  const foodItems = venue.menu.filter((m) => (m.menuType || 'food') === 'food');
-  const drinkItems = venue.menu.filter((m) => m.menuType === 'drink');
-  // Default to Food, or Drinks when the venue only has drinks.
-  const menuType = menuSection || (foodItems.length === 0 && drinkItems.length > 0 ? 'drink' : 'food');
-  const menuItems = menuType === 'drink' ? drinkItems : foodItems;
+
+  // Menu/Activities: one button per category the editor gave the items
+  // (Food, Drinks, Desserts, …). A single category (or none) shows no buttons.
+  const renderSectioned = (tabKey, items, kind) => {
+    const groups = groupBySection(items);
+    const active = groups.find((g) => g.name === sectionPick[tabKey]) || groups[0];
+    const shown = groups.length > 1 ? active?.items || [] : items;
+    return (
+      <div>
+        {groups.length > 1 && (
+          <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+            {groups.map((g) => {
+              const selected = g === active;
+              return (
+                <button
+                  key={g.name}
+                  type="button"
+                  onClick={() => setSectionPick((p) => ({ ...p, [tabKey]: g.name }))}
+                  aria-pressed={selected}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selected
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'bg-white text-ink/60 shadow-card hover:text-ink dark:bg-[#1c1c1e] dark:text-white/60 dark:hover:text-white'
+                  }`}
+                >
+                  {g.name} <span className={selected ? 'text-white/70' : 'text-ink/35 dark:text-white/35'}>({g.items.length})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {shown.map((item) => (
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              qty={qtyInPlan(item.id)}
+              onAdd={() => addToPlan(item, kind)}
+              onDecrement={() => removeOneFromPlan(item)}
+              onReport={() => setReportItem(item)}
+              onViewDetails={() => setDetailItem(item)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -219,67 +263,9 @@ export default function Details() {
       </div>
 
       <div className="mt-6">
-        {tab === 'Menu' && (
-          <div>
-            <div className="mb-4 flex gap-2">
-              {[
-                ['food', 'Food', foodItems.length],
-                ['drink', 'Drinks', drinkItems.length],
-              ].map(([type, label, n]) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setMenuSection(type)}
-                  aria-pressed={menuType === type}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    menuType === type
-                      ? 'bg-brand text-white shadow-sm'
-                      : 'bg-white text-ink/60 shadow-card hover:text-ink dark:bg-[#1c1c1e] dark:text-white/60 dark:hover:text-white'
-                  }`}
-                >
-                  {label} <span className={menuType === type ? 'text-white/70' : 'text-ink/35 dark:text-white/35'}>({n})</span>
-                </button>
-              ))}
-            </div>
-            {menuItems.length === 0 ? (
-              <p className="py-10 text-center text-sm text-ink/40 dark:text-white/40">
-                No {menuType === 'drink' ? 'drinks' : 'food'} on this menu yet.
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {menuItems.map((item) => (
-                  <MenuItemCard
-                    key={item.id}
-                    item={item}
-                    qty={qtyInPlan(item.id)}
-                    onAdd={() => addToPlan(item, 'menu')}
-                    onDecrement={() => removeOneFromPlan(item)}
-                    onReport={() => setReportItem(item)}
-                    onViewDetails={() => setDetailItem(item)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {tab === 'Menu' && renderSectioned('Menu', venue.menu, 'menu')}
 
-        {tab === 'Activities' && (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {venue.activities.map((item) => {
-              return (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  qty={qtyInPlan(item.id)}
-                  onAdd={() => addToPlan(item, 'activity')}
-                  onDecrement={() => removeOneFromPlan(item)}
-                  onReport={() => setReportItem(item)}
-                  onViewDetails={() => setDetailItem(item)}
-                />
-              );
-            })}
-          </div>
-        )}
+        {tab === 'Activities' && renderSectioned('Activities', venue.activities, 'activity')}
 
         {tab === 'Reviews' && (
           <div className="max-w-2xl">

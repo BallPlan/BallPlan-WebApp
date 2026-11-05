@@ -11,7 +11,7 @@ import {
   Phone,
   Clock,
   UtensilsCrossed,
-  CupSoda,
+  Tag,
   Ticket,
   Flag,
   ExternalLink,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import MediaView from '../../components/MediaView';
+import { groupBySection } from '../../utils/itemSections';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PostedBy from '../components/PostedBy';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
@@ -31,6 +32,46 @@ const STATUS_STYLE = {
   resolved: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
   dismissed: 'bg-ink/5 text-ink/50 dark:bg-white/10 dark:text-white/50',
 };
+
+// Menu / Activities grouped by the categories the editor typed (Food,
+// Drinks, Desserts, …); a single category shows as a plain list.
+function ItemSectionsCard({ title, icon: Icon, items }) {
+  const groups = groupBySection(items);
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">
+        <Icon size={14} className="text-brand" /> {title} ({items.length})
+      </h2>
+      <div className="space-y-4">
+        {groups.map((g) => (
+          <div key={g.name}>
+            {groups.length > 1 && (
+              <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink/70 dark:text-white/70">
+                <Tag size={12} className="text-brand" /> {g.name} ({g.items.length})
+              </h3>
+            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {g.items.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/8 p-2.5 dark:border-white/10">
+                  <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                      <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
+                        <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminVenueDetails() {
   const { id } = useParams();
@@ -156,70 +197,11 @@ export default function AdminVenueDetails() {
           </div>
 
           {venue.menu?.length > 0 && (
-            <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">
-                <UtensilsCrossed size={14} className="text-brand" /> Menu ({venue.menu.length})
-              </h2>
-              {[
-                ['food', 'Food', UtensilsCrossed],
-                ['drink', 'Drinks', CupSoda],
-              ].map(([type, label, Icon]) => {
-                const items = venue.menu.filter((item) => (item.menuType || 'food') === type);
-                return (
-                  <div key={type} className="mt-4 first-of-type:mt-0">
-                    <h3 className="mb-2 flex items-center gap-1.5 text-xs font-bold text-ink/70 dark:text-white/70">
-                      <Icon size={13} className="text-brand" /> {label} ({items.length})
-                    </h3>
-                    {items.length === 0 ? (
-                      <p className="rounded-xl border border-dashed border-ink/10 p-3 text-xs text-ink/35 dark:border-white/10 dark:text-white/35">
-                        No {label.toLowerCase()} on this menu yet.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {items.map((item) => (
-                          <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/8 p-2.5 dark:border-white/10">
-                            <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
-                                <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
-                                  <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <ItemSectionsCard title="Menu" icon={UtensilsCrossed} items={venue.menu} />
           )}
 
           {venue.activities?.length > 0 && (
-            <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">
-                <Ticket size={14} className="text-brand" /> Activities ({venue.activities.length})
-              </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {venue.activities.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 rounded-xl border border-ink/8 p-2.5 dark:border-white/10">
-                    <ImageWithFallback src={item.image} seed={item.id} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
-                        <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
-                          <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ItemSectionsCard title="Activities" icon={Ticket} items={venue.activities} />
           )}
 
           {venueReports.length > 0 && (

@@ -22,7 +22,7 @@ function subscribe(listener) {
 }
 
 function toFormItem(i) {
-  return { id: i.id, name: i.name, image: i.image, price: i.price, desc: i.description, menuType: i.menu_type || 'food', cartAddCount: i.cart_add_count };
+  return { id: i.id, name: i.name, image: i.image, price: i.price, desc: i.description, section: i.section || '', cartAddCount: i.cart_add_count };
 }
 
 // Who listed the venue — admin, support or an agent. Venues seeded by the
@@ -187,7 +187,7 @@ async function syncVenueItems(venueId, venue) {
         id: resolveId(m, 'm'),
         venue_id: venueId,
         kind: 'menu',
-        menu_type: m.menuType === 'drink' ? 'drink' : 'food',
+        section: m.section?.trim() || null,
         name: m.name,
         image: m.image || null,
         price: Number(m.price) || 0,
@@ -200,6 +200,7 @@ async function syncVenueItems(venueId, venue) {
         id: resolveId(a, 'a'),
         venue_id: venueId,
         kind: 'activity',
+        section: a.section?.trim() || null,
         name: a.name,
         image: a.image || null,
         price: Number(a.price) || 0,

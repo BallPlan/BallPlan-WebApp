@@ -17,6 +17,7 @@ import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeria
 import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../components/MediaInput';
 import { supabase } from '../lib/supabaseClient';
+import { sectionNames } from '../../utils/itemSections';
 
 const emptyVenue = {
   name: '',
@@ -54,11 +55,14 @@ function Field({ label, children }) {
 const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', withMenuType = false }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [] }) {
   const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+  // Category suggestions: whatever this list already uses, plus defaults.
+  const listId = `sections-${title.replace(/\W+/g, '-').toLowerCase()}`;
+  const sectionOptions = [...new Set([...sectionNames(items), ...suggestedSections])];
   const add = () =>
-    onChange([...items, { id: `new-${Date.now()}`, name: '', image: '', price: '', desc: '', menuType: 'food' }]);
+    onChange([...items, { id: `new-${Date.now()}`, name: '', image: '', price: '', desc: '', section: items[items.length - 1]?.section || '' }]);
 
   return (
     <div>
@@ -72,6 +76,11 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', withMenuType =
           <Plus size={13} /> Add
         </button>
       </div>
+      <datalist id={listId}>
+        {sectionOptions.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
       <div className="mt-3 space-y-3">
         {items.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">Nothing added yet.</p>}
         {items.map((item, i) => (
@@ -89,28 +98,16 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', withMenuType =
                 className={inputCls}
               />
             </div>
-            {withMenuType && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs font-semibold text-ink/50 dark:text-white/50">Type</span>
-                {[
-                  ['food', 'Food'],
-                  ['drink', 'Drink'],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => update(i, { menuType: value })}
-                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                      (item.menuType || 'food') === value
-                        ? 'bg-brand text-white'
-                        : 'bg-ink/5 text-ink/60 hover:bg-ink/10 dark:bg-white/10 dark:text-white/60'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="mt-2">
+              <input
+                value={item.section || ''}
+                onChange={(e) => update(i, { section: e.target.value })}
+                list={listId}
+                placeholder="Category (e.g. Food, Drinks, Desserts)"
+                aria-label="Category"
+                className={inputCls}
+              />
+            </div>
             <div className="mt-2">
               <MediaInput client={supabase} value={item.image} onChange={(v) => update(i, { image: v })} placeholder="Image URL" accept="image/*" />
             </div>
@@ -355,7 +352,7 @@ export default function VenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} withMenuType />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
