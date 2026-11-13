@@ -55,7 +55,7 @@ function Field({ label, children }) {
 const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [] }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add' }) {
   const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   // Category suggestions: whatever this list already uses, plus defaults.
@@ -66,16 +66,7 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-ink dark:text-white">{title}</h3>
-        <button
-          type="button"
-          onClick={add}
-          className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand transition hover:bg-brand hover:text-white"
-        >
-          <Plus size={13} /> Add
-        </button>
-      </div>
+      <h3 className="text-sm font-bold text-ink dark:text-white">{title}</h3>
       <datalist id={listId}>
         {sectionOptions.map((name) => (
           <option key={name} value={name} />
@@ -128,6 +119,13 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
           </div>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={add}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/30 py-2.5 text-sm font-bold text-brand transition hover:border-brand hover:bg-brand/5 dark:border-brand/40 dark:hover:bg-brand/10"
+      >
+        <Plus size={15} /> {addLabel}
+      </button>
     </div>
   );
 }
@@ -322,16 +320,7 @@ export default function VenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Media</h2>
-            <button
-              type="button"
-              onClick={addGalleryUrl}
-              className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand transition hover:bg-brand hover:text-white"
-            >
-              <ImagePlus size={13} /> Add photo/video
-            </button>
-          </div>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Media</h2>
           <Field label="Hero photo or video">
             <div className="mt-1">
               <MediaInput client={supabase} value={venue.hero} onChange={(v) => set({ hero: v })} placeholder="Hero image or video URL" />
@@ -349,27 +338,25 @@ export default function VenueForm() {
               </div>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={addGalleryUrl}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/30 py-2.5 text-sm font-bold text-brand transition hover:border-brand hover:bg-brand/5 dark:border-brand/40 dark:hover:bg-brand/10"
+          >
+            <ImagePlus size={15} /> Add photo/video
+          </button>
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" />
+          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Hidden fees</h2>
-            <button
-              type="button"
-              onClick={addFee}
-              className="flex items-center gap-1 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand transition hover:bg-brand hover:text-white"
-            >
-              <Plus size={13} /> Add fee
-            </button>
-          </div>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Hidden fees</h2>
           <div className="mt-3 space-y-2">
             {venue.hiddenFees.map((fee, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -386,6 +373,13 @@ export default function VenueForm() {
             ))}
             {venue.hiddenFees.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">No hidden fees added.</p>}
           </div>
+          <button
+            type="button"
+            onClick={addFee}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/30 py-2.5 text-sm font-bold text-brand transition hover:border-brand hover:bg-brand/5 dark:border-brand/40 dark:hover:bg-brand/10"
+          >
+            <Plus size={15} /> Add fee
+          </button>
         </section>
       </div>
 
