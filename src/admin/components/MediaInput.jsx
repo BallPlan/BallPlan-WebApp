@@ -20,7 +20,7 @@ export function fileToDataUrl(file) {
 // resulting public URL into the field, so either a pasted URL or a local
 // file works. `client` is the portal's own signed-in Supabase client
 // (admin/support or agent), which decides whose folder the file lands in.
-export default function MediaInput({ value, onChange, client, placeholder = 'Image or video URL', accept = 'image/*,video/*' }) {
+export default function MediaInput({ value, onChange, client, placeholder = 'Image or video URL', accept = 'image/*,video/*', invalid = false }) {
   const fileRef = useRef(null);
   const { notify } = useToast();
   const [progress, setProgress] = useState(null); // null = idle, 0..1 while uploading
@@ -67,7 +67,8 @@ export default function MediaInput({ value, onChange, client, placeholder = 'Ima
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={uploading}
-        className={`${inputCls} ${uploading ? 'text-brand' : ''}`}
+        aria-invalid={invalid || undefined}
+        className={`${inputCls} ${uploading ? 'text-brand' : ''} ${invalid ? 'border-red-400 ring-2 ring-red-400/20 dark:border-red-500' : ''}`}
       />
       <button
         type="button"

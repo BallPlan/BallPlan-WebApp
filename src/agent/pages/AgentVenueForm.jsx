@@ -49,7 +49,11 @@ function Field({ label, children }) {
 const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add' }) {
+// A named menu item / activity must have an image. (Rows with no name are
+// dropped on save, so they don't count.)
+const missingImage = (item) => !!item.name?.trim() && !item.image?.trim();
+
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', showErrors = false }) {
   const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   // Category suggestions: whatever this list already uses, plus defaults.
@@ -68,7 +72,13 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
       <div className="mt-3 space-y-3">
         {items.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">Nothing added yet.</p>}
         {items.map((item, i) => (
-          <div key={item.id || i} className="rounded-xl border border-ink/10 p-3 dark:border-white/10">
+          <div
+            key={item.id || i}
+            data-missing-image={showErrors && missingImage(item) ? '' : undefined}
+            className={`rounded-xl border p-3 ${
+              showErrors && missingImage(item) ? 'border-red-300 bg-red-50/40 dark:border-red-500/50 dark:bg-red-500/5' : 'border-ink/10 dark:border-white/10'
+            }`}
+          >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.5fr_1fr]">
               <input value={item.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="Name" className={inputCls} />
               <input
@@ -88,7 +98,17 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
               />
             </div>
             <div className="mt-2">
-              <MediaInput client={supabase} value={item.image} onChange={(v) => update(i, { image: v })} placeholder="Image URL" accept="image/*" />
+              <MediaInput
+                client={supabase}
+                value={item.image}
+                onChange={(v) => update(i, { image: v })}
+                placeholder="Image URL (required)"
+                accept="image/*"
+                invalid={showErrors && missingImage(item)}
+              />
+              {showErrors && missingImage(item) && (
+                <p className="mt-1 text-xs font-semibold text-red-500">Image required</p>
+              )}
             </div>
             <textarea
               value={item.desc || ''}
@@ -129,6 +149,9 @@ export default function AgentVenueForm() {
   const [categories, setCategories] = useState([]);
 
   const [venue, setVenue] = useState(emptyVenue);
+  // Turned on by a Save attempt with images missing; highlights clear as
+  // soon as each image is added.
+  const [showImageErrors, setShowImageErrors] = useState(false);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -177,6 +200,8 @@ export default function AgentVenueForm() {
   const addFee = () => set({ hiddenFees: [...venue.hiddenFees, { label: '', amount: '' }] });
   const removeFee = (i) => set({ hiddenFees: venue.hiddenFees.filter((_, idx) => idx !== i) });
 
+  const venueNoMediaNow = !venue.hero?.trim() && !venue.gallery.some((g) => g?.trim());
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!venue.name.trim() || !venue.tab) {
@@ -185,6 +210,27 @@ export default function AgentVenueForm() {
     }
     if (venue.phone && !isValidNigeriaPhone(venue.phone)) {
       notify('Phone number must be 10 digits, e.g. 803 123 4567.', 'warning');
+      return;
+    }
+
+    // Images are compulsory: the venue needs at least one photo/video (and
+    // no empty gallery rows), and every menu item and activity needs one.
+    const venueNoMedia = !venue.hero?.trim() && !venue.gallery.some((g) => g?.trim());
+    const emptyGalleryRows = venue.gallery.filter((g) => !g?.trim()).length;
+    const menuMissing = venue.menu.filter(missingImage);
+    const activitiesMissing = venue.activities.filter(missingImage);
+    if (venueNoMedia || emptyGalleryRows || menuMissing.length || activitiesMissing.length) {
+      const names = (list) => list.map((i) => i.name.trim()).join(', ');
+      const parts = [];
+      if (venueNoMedia) parts.push('the venue (photo or video)');
+      if (emptyGalleryRows) parts.push(`${emptyGalleryRows} empty photo/video row${emptyGalleryRows > 1 ? 's' : ''} — add a file or remove ${emptyGalleryRows > 1 ? 'them' : 'it'}`);
+      if (menuMissing.length) parts.push(`menu: ${names(menuMissing)}`);
+      if (activitiesMissing.length) parts.push(`activities: ${names(activitiesMissing)}`);
+      setShowImageErrors(true);
+      notify(`Please add an image for ${parts.join('; ')}.`, 'warning', 6000);
+      requestAnimationFrame(() =>
+        document.querySelector('[data-missing-image]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+      );
       return;
     }
     const payload = {
@@ -325,14 +371,36 @@ export default function AgentVenueForm() {
           <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Media</h2>
           <Field label="Hero photo or video">
             <div className="mt-1">
-              <MediaInput client={supabase} value={venue.hero} onChange={(v) => set({ hero: v })} placeholder="Hero image or video URL" />
+              <div data-missing-image={showImageErrors && venueNoMediaNow ? '' : undefined}>
+                <MediaInput
+                  client={supabase}
+                  value={venue.hero}
+                  onChange={(v) => set({ hero: v })}
+                  placeholder="Hero image or video URL"
+                  invalid={showImageErrors && venueNoMediaNow}
+                />
+                {showImageErrors && venueNoMediaNow && (
+                  <p className="mt-1 text-xs font-semibold text-red-500">Add at least one photo or video of the venue</p>
+                )}
+              </div>
             </div>
           </Field>
           <div className="mt-3 space-y-2">
             {venue.gallery.map((url, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="flex-1">
-                  <MediaInput client={supabase} value={url} onChange={(v) => handleGalleryChange(i, v)} placeholder="Gallery image or video URL" />
+                  <div data-missing-image={showImageErrors && !url?.trim() ? '' : undefined}>
+                    <MediaInput
+                      client={supabase}
+                      value={url}
+                      onChange={(v) => handleGalleryChange(i, v)}
+                      placeholder="Gallery image or video URL"
+                      invalid={showImageErrors && !url?.trim()}
+                    />
+                    {showImageErrors && !url?.trim() && (
+                      <p className="mt-1 text-xs font-semibold text-red-500">Add a photo/video or remove this row</p>
+                    )}
+                  </div>
                 </div>
                 <button type="button" onClick={() => removeGalleryUrl(i)} className="shrink-0 text-red-500">
                   <Trash2 size={15} />
@@ -350,11 +418,11 @@ export default function AgentVenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" showErrors={showImageErrors} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" />
+          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" showErrors={showImageErrors} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
