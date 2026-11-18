@@ -12,12 +12,13 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
 import { formatNaira } from '../../utils/currency';
-import NigeriaPhoneInput, { isValidNigeriaPhone } from '../../components/NigeriaPhoneInput';
+import NigeriaPhoneInput from '../../components/NigeriaPhoneInput';
 import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeriaStates';
 import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../components/MediaInput';
 import { supabase } from '../lib/supabaseClient';
 import { sectionNames } from '../../utils/itemSections';
+import { validateVenue } from '../lib/venueValidation';
 
 const emptyVenue = {
   name: '',
@@ -43,11 +44,20 @@ const emptyVenue = {
   published: true,
 };
 
-function Field({ label, children }) {
+// Red note under a field that failed the required-field check on Save.
+function FieldError({ msg }) {
+  return msg ? <p className="mt-1 text-xs font-semibold text-red-500">{msg}</p> : null;
+}
+
+function Field({ label, children, error, required = false }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold text-ink/50 dark:text-white/50">{label}</span>
+    <label className="block" data-invalid={error ? '' : undefined}>
+      <span className="mb-1.5 block text-xs font-semibold text-ink/50 dark:text-white/50">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </span>
       {children}
+      <FieldError msg={error} />
     </label>
   );
 }
@@ -55,11 +65,10 @@ function Field({ label, children }) {
 const inputCls =
   'w-full rounded-xl border border-ink/12 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111217] dark:text-white';
 
-// A named menu item / activity must have an image. (Rows with no name are
-// dropped on save, so they don't count.)
-const missingImage = (item) => !!item.name?.trim() && !item.image?.trim();
+// Red outline for an input that failed the required-field check.
+const inv = (error) => (error ? ' border-red-400 ring-2 ring-red-400/20 dark:border-red-500' : '');
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', showErrors = false }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError }) {
   const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   // Category suggestions: whatever this list already uses, plus defaults.
@@ -78,49 +87,51 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
       </datalist>
       <div className="mt-3 space-y-3">
         {items.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">Nothing added yet.</p>}
-        {items.map((item, i) => (
+        {items.map((item, i) => {
+          const e = errors[i] || {};
+          return (
           <div
             key={item.id || i}
-            data-missing-image={showErrors && missingImage(item) ? '' : undefined}
+            data-invalid={Object.keys(e).length ? '' : undefined}
             className={`rounded-xl border p-3 ${
-              showErrors && missingImage(item) ? 'border-red-300 bg-red-50/40 dark:border-red-500/50 dark:bg-red-500/5' : 'border-ink/10 dark:border-white/10'
+              Object.keys(e).length ? 'border-red-300 bg-red-50/40 dark:border-red-500/50 dark:bg-red-500/5' : 'border-ink/10 dark:border-white/10'
             }`}
           >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.5fr_1fr]">
               <input
                 value={item.name}
                 onChange={(e) => update(i, { name: e.target.value })}
-                placeholder="Name"
-                className={inputCls}
+                placeholder="Name *"
+                className={`${inputCls}${inv(e.name)}`}
               />
               <input
                 {...integerInputProps(String(item.price ?? ''), (v) => update(i, { price: v }))}
-                placeholder={`${priceLabel} (₦)`}
-                className={inputCls}
+                placeholder={`${priceLabel} (₦) *`}
+                className={`${inputCls}${inv(e.price)}`}
               />
             </div>
+            <FieldError msg={[e.name, e.price].filter(Boolean).join(' · ')} />
             <div className="mt-2">
               <input
                 value={item.section || ''}
                 onChange={(e) => update(i, { section: e.target.value })}
                 list={listId}
-                placeholder="Category (e.g. Food, Drinks, Desserts)"
+                placeholder="Category * (e.g. Food, Drinks, Desserts)"
                 aria-label="Category"
-                className={inputCls}
+                className={`${inputCls}${inv(e.section)}`}
               />
+              <FieldError msg={e.section} />
             </div>
             <div className="mt-2">
               <MediaInput
                 client={supabase}
                 value={item.image}
                 onChange={(v) => update(i, { image: v })}
-                placeholder="Image URL (required)"
+                placeholder="Image URL *"
                 accept="image/*"
-                invalid={showErrors && missingImage(item)}
+                invalid={!!e.image}
               />
-              {showErrors && missingImage(item) && (
-                <p className="mt-1 text-xs font-semibold text-red-500">Image required</p>
-              )}
+              <FieldError msg={e.image} />
             </div>
             <textarea
               value={item.desc || ''}
@@ -137,8 +148,14 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
               <Trash2 size={12} /> Remove
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
+      {listError && (
+        <p data-invalid="" className="mt-2 text-xs font-semibold text-red-500">
+          {listError}
+        </p>
+      )}
       <button
         type="button"
         onClick={add}
@@ -159,9 +176,9 @@ export default function VenueForm() {
   const categories = useMemo(() => getCategories(), [categoriesSnapshot]);
 
   const [venue, setVenue] = useState(emptyVenue);
-  // Turned on by a Save attempt with images missing; highlights clear as
-  // soon as each image is added.
-  const [showImageErrors, setShowImageErrors] = useState(false);
+  // Turned on by a Save attempt with required fields missing; each
+  // highlight clears as soon as that field is filled in.
+  const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -206,39 +223,26 @@ export default function VenueForm() {
   const addFee = () => set({ hiddenFees: [...venue.hiddenFees, { label: '', amount: '' }] });
   const removeFee = (i) => set({ hiddenFees: venue.hiddenFees.filter((_, idx) => idx !== i) });
 
-  const venueNoMediaNow = !venue.hero?.trim() && !venue.gallery.some((g) => g?.trim());
+  const validation = useMemo(() => validateVenue(venue), [venue]);
+  const err = showErrors ? validation.errors : { gallery: {}, menu: {}, activities: {}, fees: {} };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!venue.name.trim() || !venue.tab) {
-      notify('Name and category are required.', 'warning');
-      return;
-    }
-    if (venue.phone && !isValidNigeriaPhone(venue.phone)) {
-      notify('Phone number must be 10 digits, e.g. 803 123 4567.', 'warning');
-      return;
-    }
-
-    // Images are compulsory: the venue needs at least one photo/video (and
-    // no empty gallery rows), and every menu item and activity needs one.
-    const venueNoMedia = !venue.hero?.trim() && !venue.gallery.some((g) => g?.trim());
-    const emptyGalleryRows = venue.gallery.filter((g) => !g?.trim()).length;
-    const menuMissing = venue.menu.filter(missingImage);
-    const activitiesMissing = venue.activities.filter(missingImage);
-    if (venueNoMedia || emptyGalleryRows || menuMissing.length || activitiesMissing.length) {
-      const names = (list) => list.map((i) => i.name.trim()).join(', ');
-      const parts = [];
-      if (venueNoMedia) parts.push('the venue (photo or video)');
-      if (emptyGalleryRows) parts.push(`${emptyGalleryRows} empty photo/video row${emptyGalleryRows > 1 ? 's' : ''} — add a file or remove ${emptyGalleryRows > 1 ? 'them' : 'it'}`);
-      if (menuMissing.length) parts.push(`menu: ${names(menuMissing)}`);
-      if (activitiesMissing.length) parts.push(`activities: ${names(activitiesMissing)}`);
-      setShowImageErrors(true);
-      notify(`Please add an image for ${parts.join('; ')}.`, 'warning', 6000);
+    if (!validation.valid) {
+      setShowErrors(true);
+      const { summary } = validation;
+      const shown = summary.slice(0, 5).join('; ');
+      notify(
+        `Please complete the highlighted fields: ${shown}${summary.length > 5 ? ` and ${summary.length - 5} more` : ''}.`,
+        'warning',
+        7000,
+      );
       requestAnimationFrame(() =>
-        document.querySelector('[data-missing-image]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+        document.querySelector('[data-invalid]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
       );
       return;
     }
+
     const payload = {
       ...venue,
       location: joinLocation(venue.location, venue.state),
@@ -283,11 +287,11 @@ export default function VenueForm() {
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Basic info</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Venue name">
-              <input value={venue.name} onChange={(e) => set({ name: e.target.value })} className={inputCls} required />
+            <Field label="Venue name" required error={err.name}>
+              <input value={venue.name} onChange={(e) => set({ name: e.target.value })} className={`${inputCls}${inv(err.name)}`} />
             </Field>
-            <Field label="Category">
-              <select value={venue.tab} onChange={(e) => handleCategoryChange(e.target.value)} className={inputCls} required>
+            <Field label="Category" required error={err.tab}>
+              <select value={venue.tab} onChange={(e) => handleCategoryChange(e.target.value)} className={`${inputCls}${inv(err.tab)}`}>
                 <option value="">Select a category</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.name}>
@@ -301,7 +305,7 @@ export default function VenueForm() {
                 {cheapestItemPrice != null ? formatNaira(cheapestItemPrice) : 'Add a menu/activity item below'}
               </div>
             </Field>
-            <Field label="Rating (0–5)">
+            <Field label="Rating (0–5)" required error={err.rating}>
               <input
                 type="number"
                 min="0"
@@ -309,22 +313,23 @@ export default function VenueForm() {
                 step="0.1"
                 value={venue.rating}
                 onChange={(e) => set({ rating: e.target.value })}
-                className={inputCls}
+                className={`${inputCls}${inv(err.rating)}`}
               />
             </Field>
-            <Field label="Open time">
-              <input type="time" value={to24Hour(venue.openTime)} onChange={(e) => set({ openTime: to12Hour(e.target.value) })} className={inputCls} />
+            <Field label="Open time" required error={err.openTime}>
+              <input type="time" value={to24Hour(venue.openTime)} onChange={(e) => set({ openTime: to12Hour(e.target.value) })} className={`${inputCls}${inv(err.openTime)}`} />
             </Field>
-            <Field label="Close time">
-              <input type="time" value={to24Hour(venue.closeTime)} onChange={(e) => set({ closeTime: to12Hour(e.target.value) })} className={inputCls} />
+            <Field label="Close time" required error={err.closeTime}>
+              <input type="time" value={to24Hour(venue.closeTime)} onChange={(e) => set({ closeTime: to12Hour(e.target.value) })} className={`${inputCls}${inv(err.closeTime)}`} />
             </Field>
           </div>
-          <Field label="Description">
+          <div className="mt-4" />
+          <Field label="Description" required error={err.description}>
             <textarea
               value={venue.description || ''}
               onChange={(e) => set({ description: e.target.value })}
               rows={3}
-              className={`${inputCls} mt-4 resize-none`}
+              className={`${inputCls} resize-none${inv(err.description)}`}
             />
           </Field>
           <div className="mt-4 flex flex-wrap gap-5">
@@ -339,15 +344,20 @@ export default function VenueForm() {
               </label>
             ))}
           </div>
+          {err.kinds && (
+            <p data-invalid="" className="mt-2 text-xs font-semibold text-red-500">
+              {err.kinds}
+            </p>
+          )}
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Location</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Area">
-              <input value={venue.location} onChange={(e) => set({ location: e.target.value })} className={inputCls} placeholder="Ikeja" />
+            <Field label="Area" required error={err.location}>
+              <input value={venue.location} onChange={(e) => set({ location: e.target.value })} className={`${inputCls}${inv(err.location)}`} placeholder="Ikeja" />
             </Field>
-            <Field label="State">
+            <Field label="State" required>
               <select value={venue.state} onChange={(e) => set({ state: e.target.value })} className={inputCls}>
                 {NIGERIA_STATES.map((s) => (
                   <option key={s} value={s}>
@@ -356,30 +366,30 @@ export default function VenueForm() {
                 ))}
               </select>
             </Field>
-            <Field label="Full address">
-              <input value={venue.address} onChange={(e) => set({ address: e.target.value })} className={inputCls} />
+            <Field label="Full address" required error={err.address}>
+              <input value={venue.address} onChange={(e) => set({ address: e.target.value })} className={`${inputCls}${inv(err.address)}`} />
             </Field>
-            <Field label="Phone">
-              <NigeriaPhoneInput value={venue.phone} onChange={(v) => set({ phone: v })} />
+            <Field label="Phone" required error={err.phone}>
+              <div className={err.phone ? 'rounded-xl ring-2 ring-red-400/60' : ''}>
+                <NigeriaPhoneInput value={venue.phone} onChange={(v) => set({ phone: v })} />
+              </div>
             </Field>
           </div>
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Media</h2>
-          <Field label="Hero photo or video">
+          <Field label="Hero photo or video" required>
             <div className="mt-1">
-              <div data-missing-image={showImageErrors && venueNoMediaNow ? '' : undefined}>
+              <div data-invalid={err.hero ? '' : undefined}>
                 <MediaInput
                   client={supabase}
                   value={venue.hero}
                   onChange={(v) => set({ hero: v })}
                   placeholder="Hero image or video URL"
-                  invalid={showImageErrors && venueNoMediaNow}
+                  invalid={!!err.hero}
                 />
-                {showImageErrors && venueNoMediaNow && (
-                  <p className="mt-1 text-xs font-semibold text-red-500">Add at least one photo or video of the venue</p>
-                )}
+                <FieldError msg={err.hero} />
               </div>
             </div>
           </Field>
@@ -387,17 +397,15 @@ export default function VenueForm() {
             {venue.gallery.map((url, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="flex-1">
-                  <div data-missing-image={showImageErrors && !url?.trim() ? '' : undefined}>
+                  <div data-invalid={err.gallery[i] ? '' : undefined}>
                     <MediaInput
                       client={supabase}
                       value={url}
                       onChange={(v) => handleGalleryChange(i, v)}
                       placeholder="Gallery image or video URL"
-                      invalid={showImageErrors && !url?.trim()}
+                      invalid={!!err.gallery[i]}
                     />
-                    {showImageErrors && !url?.trim() && (
-                      <p className="mt-1 text-xs font-semibold text-red-500">Add a photo/video or remove this row</p>
-                    )}
+                    <FieldError msg={err.gallery[i]} />
                   </div>
                 </div>
                 <button type="button" onClick={() => removeGalleryUrl(i)} className="shrink-0 text-red-500">
@@ -416,29 +424,40 @@ export default function VenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" showErrors={showImageErrors} />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" errors={err.menu} listError={err.menuList} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" showErrors={showImageErrors} />
+          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" errors={err.activities} listError={err.activitiesList} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Hidden fees</h2>
           <div className="mt-3 space-y-2">
-            {venue.hiddenFees.map((fee, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input value={fee.label} onChange={(e) => updateFee(i, { label: e.target.value })} placeholder="Fee label" className={inputCls} />
-                <input
-                  {...integerInputProps(String(fee.amount ?? ''), (v) => updateFee(i, { amount: v }))}
-                  placeholder="Amount (₦)"
-                  className={`${inputCls} max-w-[160px]`}
-                />
-                <button type="button" onClick={() => removeFee(i)} className="shrink-0 text-red-500">
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
+            {venue.hiddenFees.map((fee, i) => {
+              const fe = err.fees[i] || {};
+              return (
+                <div key={i} data-invalid={fe.label || fe.amount ? '' : undefined}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={fee.label}
+                      onChange={(e) => updateFee(i, { label: e.target.value })}
+                      placeholder="Fee label *"
+                      className={`${inputCls}${inv(fe.label)}`}
+                    />
+                    <input
+                      {...integerInputProps(String(fee.amount ?? ''), (v) => updateFee(i, { amount: v }))}
+                      placeholder="Amount (₦) *"
+                      className={`${inputCls} max-w-[160px]${inv(fe.amount)}`}
+                    />
+                    <button type="button" onClick={() => removeFee(i)} className="shrink-0 text-red-500">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <FieldError msg={[fe.label, fe.amount].filter(Boolean).join(' · ')} />
+                </div>
+              );
+            })}
             {venue.hiddenFees.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">No hidden fees added.</p>}
           </div>
           <button
