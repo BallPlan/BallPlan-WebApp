@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Trash2, ImagePlus, Save, Eye } from 'lucide-react';
 import { getVenueById, addVenue, updateVenue, getCategories } from '../lib/agentData';
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
-import { formatNaira } from '../../utils/currency';
+import { formatNaira, parseFeeAmount } from '../../utils/currency';
 import NigeriaPhoneInput from '../../components/NigeriaPhoneInput';
 import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeriaStates';
 import { to24Hour, to12Hour } from '../../utils/timeFormat';
@@ -251,7 +251,7 @@ export default function AgentVenueForm() {
       hero: venue.hero || venue.gallery[0] || '',
       menu: venue.menu.map((m) => ({ ...m, price: Number(m.price) || 0 })),
       activities: venue.activities.map((a) => ({ ...a, price: Number(a.price) || 0 })),
-      hiddenFees: venue.hiddenFees.filter((f) => f.label).map((f) => ({ label: f.label, amount: Number(f.amount) || 0 })),
+      hiddenFees: venue.hiddenFees.filter((f) => f.label).map((f) => ({ label: f.label, amount: parseFeeAmount(f.amount) })),
     };
 
     try {
@@ -453,9 +453,10 @@ export default function AgentVenueForm() {
                       className={`${inputCls}${inv(fe.label)}`}
                     />
                     <input
-                      {...integerInputProps(String(fee.amount ?? ''), (v) => updateFee(i, { amount: v }))}
-                      placeholder="Amount (₦) *"
-                      className={`${inputCls} max-w-[160px]${inv(fe.amount)}`}
+                      value={String(fee.amount ?? '')}
+                      onChange={(e) => updateFee(i, { amount: e.target.value })}
+                      placeholder="Amount * (e.g. 2000 or 7.5%)"
+                      className={`${inputCls} max-w-[200px]${inv(fe.amount)}`}
                     />
                     <button type="button" onClick={() => removeFee(i)} className="shrink-0 text-red-500">
                       <Trash2 size={15} />

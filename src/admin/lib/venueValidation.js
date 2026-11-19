@@ -92,7 +92,7 @@ export function validateVenue(venue) {
     if (!feeInUse(f)) return;
     const e = {};
     if (blank(f.label)) e.label = 'Label required';
-    if (!(Number(f.amount) > 0)) e.amount = 'Amount required';
+    if (blank(f.amount)) e.amount = 'Amount required';
     if (Object.keys(e).length) {
       errors.fees[i] = e;
       summary.push(`fee “${f.label?.trim() || `#${i + 1}`}”`);

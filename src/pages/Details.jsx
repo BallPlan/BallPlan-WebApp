@@ -17,7 +17,7 @@ import RatingStars from '../components/RatingStars';
 import RatingDistribution from '../components/RatingDistribution';
 import ReviewCard from '../components/ReviewCard';
 import WriteReviewModal from '../components/WriteReviewModal';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatFeeAmount } from '../utils/currency';
 import { isOpenNow } from '../utils/time';
 import { openDirections } from '../utils/maps';
 import { getVenueCoords, osmEmbedUrl, osmViewUrl } from '../utils/geo';
@@ -219,7 +219,7 @@ export default function Details() {
                   {venue.hiddenFees.map((f) => (
                     <li key={f.label} className="flex justify-between">
                       <span>{f.label}</span>
-                      <span className="font-semibold text-ink dark:text-white">{formatNaira(f.amount)}</span>
+                      <span className="font-semibold text-ink dark:text-white">{formatFeeAmount(f.amount)}</span>
                     </li>
                   ))}
                 </ul>

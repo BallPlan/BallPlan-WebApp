@@ -24,7 +24,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import PostedBy from '../components/PostedBy';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
 import { useReportsStore, getReports } from '../lib/reportsData';
-import { formatNaira } from '../../utils/currency';
+import { formatNaira, formatFeeAmount } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
 const STATUS_STYLE = {
@@ -314,7 +314,7 @@ export default function AdminVenueDetails() {
                 {venue.hiddenFees.map((f) => (
                   <div key={f.label} className="flex justify-between">
                     <span className="text-ink/60 dark:text-white/60">{f.label}</span>
-                    <span className="font-semibold text-ink dark:text-white">{formatNaira(f.amount)}</span>
+                    <span className="font-semibold text-ink dark:text-white">{formatFeeAmount(f.amount)}</span>
                   </div>
                 ))}
               </div>
