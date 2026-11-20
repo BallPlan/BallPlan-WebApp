@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, Star, Eye, Pencil, EyeOff, Trash2, Store } from 'lucide-react';
+import { Search, Plus, Star, Eye, FileText, Pencil, EyeOff, Store } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import ActionMenu from '../../admin/components/ActionMenu';
-import ConfirmDialog from '../../admin/components/ConfirmDialog';
 import StatCard from '../../admin/components/StatCard';
-import { useVenuesStore, getVenues, setVenuePublished, deleteVenue } from '../lib/agentData';
+import { useVenuesStore, getVenues, setVenuePublished } from '../lib/agentData';
 import { formatNaira } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
 export default function AgentVenues() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const { notify } = useToast();
 
   const venuesSnapshot = useVenuesStore();
@@ -30,17 +28,6 @@ export default function AgentVenues() {
     } catch {
       notify('Could not update this venue.', 'warning');
     }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteVenue(deleteTarget.id);
-      notify(`${deleteTarget.name} was deleted.`, 'success');
-    } catch {
-      notify('Could not delete this venue.', 'warning');
-    }
-    setDeleteTarget(null);
   };
 
   const activeCount = venues.filter((v) => v.published !== false).length;
@@ -127,14 +114,13 @@ export default function AgentVenues() {
                 <div className="flex justify-end">
                   <ActionMenu
                     items={[
+                      { label: 'View details', icon: FileText, onClick: () => navigate(`/venues/${venue.id}`) },
                       { label: 'Edit', icon: Pencil, onClick: () => navigate(`/venues/${venue.id}/edit`) },
                       {
                         label: venue.published === false ? 'Publish' : 'Unpublish',
                         icon: venue.published === false ? Eye : EyeOff,
                         onClick: () => handleTogglePublish(venue),
                       },
-                      { divider: true },
-                      { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteTarget(venue) },
                     ]}
                   />
                 </div>
@@ -144,14 +130,6 @@ export default function AgentVenues() {
         </div>
       )}
 
-      <ConfirmDialog
-        open={!!deleteTarget}
-        title="Delete this venue?"
-        description={`"${deleteTarget?.name}" will be permanently removed from BallPlan.`}
-        confirmLabel="Yes, delete"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </div>
   );
 }

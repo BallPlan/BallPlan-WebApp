@@ -9,6 +9,7 @@ import AgentLogin from './pages/AgentLogin';
 import AgentDashboard from './pages/AgentDashboard';
 import AgentVenues from './pages/AgentVenues';
 import AgentVenueForm from './pages/AgentVenueForm';
+import AgentVenueDetails from './pages/AgentVenueDetails';
 import AgentReviews from './pages/AgentReviews';
 import AgentSettings from './pages/AgentSettings';
 import AgentLogout from './pages/AgentLogout';
@@ -49,6 +50,7 @@ export default function AgentApp() {
               <Route path="/" element={<AgentDashboard />} />
               <Route path="/venues" element={<AgentVenues />} />
               <Route path="/venues/new" element={<AgentVenueForm />} />
+              <Route path="/venues/:id" element={<AgentVenueDetails />} />
               <Route path="/venues/:id/edit" element={<AgentVenueForm />} />
               <Route path="/reviews" element={<AgentReviews />} />
               <Route path="/settings" element={<AgentSettings />} />

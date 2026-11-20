@@ -36,6 +36,7 @@ function normalizeVenue(v, itemsByVenue) {
     hiddenFees: v.hidden_fees || [],
     viewsCount: v.views_count,
     createdAt: v.created_at,
+    updatedAt: v.updated_at,
     menu: items.filter((i) => i.kind === 'menu').map(toFormItem),
     activities: items.filter((i) => i.kind === 'activity').map(toFormItem),
   };
@@ -219,12 +220,6 @@ export async function updateVenue(id, venue) {
   const { error } = await supabase.from('venues').update(venueColumns(venue)).eq('id', id);
   if (error) throw error;
   await syncVenueItems(id, venue);
-  await fetchAll();
-}
-
-export async function deleteVenue(id) {
-  const { error } = await supabase.from('venues').delete().eq('id', id);
-  if (error) throw error;
   await fetchAll();
 }
 
