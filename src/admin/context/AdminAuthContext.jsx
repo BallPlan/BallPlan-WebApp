@@ -1,8 +1,13 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { squareAvatarBlob } from '../../utils/resizeImage';
 
 const AdminAuthContext = createContext(null);
+
+// How often to re-check the signed-in account's status in case the live
+// (realtime) connection drops; the realtime update normally arrives within
+// a second.
+const STATUS_POLL_MS = 30_000;
 
 async function loadProfile(userId) {
   const { data } = await supabase
@@ -30,31 +35,96 @@ export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // True once we've signed someone out because their account was
+  // deactivated; drives the "account deactivated" popup.
+  const [deactivated, setDeactivated] = useState(false);
+
   const isStaffProfile = (p) => !!p && allowedRoles.includes(p.role);
+  const rolesKey = allowedRoles.join(',');
+
+  const kickOut = useCallback(async () => {
+    setDeactivated(true);
+    setProfile(null);
+    setSession(null);
+    await supabase.auth.signOut();
+  }, []);
 
   useEffect(() => {
     let active = true;
+    const roles = rolesKey.split(',');
+
+    const applySession = async (session) => {
+      const p = session?.user ? await loadProfile(session.user.id) : null;
+      if (!active) return;
+      if (p && roles.includes(p.role) && p.status === 'suspended') {
+        await kickOut();
+        return;
+      }
+      setSession(session);
+      setProfile(p);
+    };
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!active) return;
-      setSession(session);
-      setProfile(session?.user ? await loadProfile(session.user.id) : null);
-      setLoading(false);
+      await applySession(session);
+      if (active) setLoading(false);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!active) return;
-      setSession(session);
-      setProfile(session?.user ? await loadProfile(session.user.id) : null);
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Deferred: awaiting Supabase calls inside this callback can deadlock
+      // the auth client.
+      setTimeout(() => applySession(session), 0);
     });
 
     return () => {
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [kickOut, rolesKey]);
+
+  // While signed in, watch the account's own profile row: deactivation (or
+  // a role change that removes access to this portal) signs them out
+  // straight away. Realtime is the instant path; the poll and the tab-focus
+  // check are the safety net.
+  const userId = session?.user?.id;
+  const signedInHere = isStaffProfile(profile);
+  useEffect(() => {
+    if (!userId || !signedInHere) return undefined;
+    let stopped = false;
+    const roles = rolesKey.split(',');
+
+    const check = (p) => {
+      if (stopped || !p) return;
+      if (p.status === 'suspended') {
+        stopped = true;
+        kickOut();
+      } else if (!roles.includes(p.role)) {
+        stopped = true;
+        supabase.auth.signOut();
+      }
+    };
+    const recheck = async () => check(await loadProfile(userId));
+
+    const channel = supabase
+      .channel(`staff-status-${userId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` }, (payload) =>
+        check(payload.new),
+      )
+      .subscribe();
+    const timer = setInterval(recheck, STATUS_POLL_MS);
+    const onVisible = () => document.visibilityState === 'visible' && recheck();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', recheck);
+
+    return () => {
+      stopped = true;
+      supabase.removeChannel(channel);
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', recheck);
+    };
+  }, [userId, signedInHere, rolesKey, kickOut]);
 
   // Password-based, unlike the customer app's email OTP — matches how
   // Settings > Agents/Support creates staff accounts with an owner-chosen
@@ -69,10 +139,13 @@ export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
       throw new Error('This account does not have access to this dashboard.');
     }
     if (staffProfile.status === 'suspended') {
-      await supabase.auth.signOut();
-      throw new Error('This account has been suspended.');
+      await kickOut();
+      const err = new Error('This account has been deactivated. Please contact admin.');
+      err.deactivated = true;
+      throw err;
     }
 
+    setDeactivated(false);
     setProfile(staffProfile);
     return staffProfile;
   };
@@ -114,6 +187,9 @@ export function AdminAuthProvider({ children, allowedRoles = ['owner'] }) {
         user: session?.user ? { ...session.user, ...profile } : null,
         loading,
         isStaff: isStaffProfile(profile),
+        deactivated,
+        dismissDeactivated: () => setDeactivated(false),
+        portalRole: allowedRoles.includes('support') ? 'support' : 'admin',
         signIn,
         signOut,
         updateOwnProfile,

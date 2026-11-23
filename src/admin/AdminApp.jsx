@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from '../context/ToastContext';
 import { useAdminThemeStore } from '../shared/store';
 import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
+import AccountDeactivatedDialog from '../components/AccountDeactivatedDialog';
 
 import AdminLayout from './components/AdminLayout';
 import AdminLogin from './pages/AdminLogin';
@@ -34,6 +35,11 @@ function RequireAuth({ children }) {
   return children;
 }
 
+function DeactivatedNotice() {
+  const { deactivated, dismissDeactivated, portalRole } = useAdminAuth();
+  return <AccountDeactivatedDialog open={deactivated} onClose={dismissDeactivated} accountLabel={portalRole} />;
+}
+
 // LoginPage and allowedRoles are swappable so /support (src/support/main.jsx)
 // can reuse every route, page and piece of data logic here untouched — same
 // nav, same permissions — while being a genuinely separate build with its
@@ -45,6 +51,7 @@ export default function AdminApp({ LoginPage = AdminLogin, allowedRoles }) {
       <AdminAuthProvider allowedRoles={allowedRoles}>
         <HashRouter>
           <ThemeSync />
+          <DeactivatedNotice />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route

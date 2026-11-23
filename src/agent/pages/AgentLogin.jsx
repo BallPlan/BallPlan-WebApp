@@ -28,7 +28,9 @@ export default function AgentLogin() {
       await signIn(email.trim(), password);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message || 'Incorrect email or password.');
+      // A deactivated account gets the popup instead of the inline error.
+      if (err.deactivated) setPassword('');
+      else setError(err.message || 'Incorrect email or password.');
     } finally {
       setSigningIn(false);
     }

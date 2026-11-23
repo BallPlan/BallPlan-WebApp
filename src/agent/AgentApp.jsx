@@ -5,6 +5,7 @@ import { AgentAuthProvider, useAgentAuth } from './context/AgentAuthContext';
 import { setCurrentAgentId } from './lib/agentData';
 
 import AgentLayout from './components/AgentLayout';
+import AccountDeactivatedDialog from '../components/AccountDeactivatedDialog';
 import AgentLogin from './pages/AgentLogin';
 import AgentDashboard from './pages/AgentDashboard';
 import AgentVenues from './pages/AgentVenues';
@@ -25,6 +26,11 @@ function SyncAgentScope() {
   return null;
 }
 
+function DeactivatedNotice() {
+  const { deactivated, dismissDeactivated } = useAgentAuth();
+  return <AccountDeactivatedDialog open={deactivated} onClose={dismissDeactivated} accountLabel="agent" />;
+}
+
 function RequireAuth({ children }) {
   const { isAgent, loading } = useAgentAuth();
   if (loading) return null;
@@ -38,6 +44,7 @@ export default function AgentApp() {
       <AgentAuthProvider>
         <HashRouter>
           <SyncAgentScope />
+          <DeactivatedNotice />
           <Routes>
             <Route path="/login" element={<AgentLogin />} />
             <Route
