@@ -9,6 +9,27 @@
 // Goes through XMLHttpRequest rather than supabase-js so the form can show
 // real upload progress for big files.
 
+import { useSyncExternalStore } from 'react';
+
+// How many uploads are running right now, so the venue form can hold off
+// saving until every photo/video has finished (a row whose image is still
+// uploading has no URL yet).
+let activeUploads = 0;
+const uploadListeners = new Set();
+function setActiveUploads(n) {
+  activeUploads = n;
+  uploadListeners.forEach((l) => l());
+}
+export function useActiveUploads() {
+  return useSyncExternalStore(
+    (l) => {
+      uploadListeners.add(l);
+      return () => uploadListeners.delete(l);
+    },
+    () => activeUploads,
+  );
+}
+
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // matches the bucket's limit
 const MAX_IMAGE_SIDE = 1920;
 const BUCKET = 'venue-media';
@@ -51,6 +72,15 @@ function extensionFor(file) {
  * @returns {Promise<string>} public URL
  */
 export async function uploadVenueMedia(client, original, onProgress) {
+  setActiveUploads(activeUploads + 1);
+  try {
+    return await doUpload(client, original, onProgress);
+  } finally {
+    setActiveUploads(activeUploads - 1);
+  }
+}
+
+async function doUpload(client, original, onProgress) {
   if (!/^(image|video)\//.test(original.type)) throw new Error('Please choose a photo or video.');
 
   const file = original.type.startsWith('image/') ? await shrinkImage(original) : original;

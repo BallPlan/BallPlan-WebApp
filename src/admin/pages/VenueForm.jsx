@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, ImagePlus, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ImagePlus, Save, Loader2, History } from 'lucide-react';
 import {
   getVenueById,
+  useVenuesStore,
   addVenue,
   updateVenue,
   useCategoriesStore,
@@ -18,7 +19,12 @@ import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../components/MediaInput';
 import { supabase } from '../lib/supabaseClient';
 import { sectionNames } from '../../utils/itemSections';
+import { useActiveUploads } from '../../utils/uploadMedia';
+import { draftKey as makeDraftKey, readDraft, writeDraft, clearDraft } from '../../utils/venueDraft';
 import { validateVenue } from '../lib/venueValidation';
+
+// Which portal this form runs in; drafts are kept separately per portal.
+const PORTAL = (typeof window !== 'undefined' && window.__ballplanPortal) || 'admin';
 
 const emptyVenue = {
   name: '',
@@ -69,13 +75,21 @@ const inputCls =
 const inv = (error) => (error ? ' border-red-400 ring-2 ring-red-400/20 dark:border-red-500' : '');
 
 function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError }) {
-  const update = (i, patch) => onChange(items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
-  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+  // `onChange` takes an updater (list => new list) applied to the *latest*
+  // list. Photo uploads finish seconds later; updating a snapshot captured
+  // when the upload started would wipe out every row added or edited (and
+  // every other upload that finished) in the meantime.
+  const sameRow = (item, i) => (it, idx) => (item.id ? it.id === item.id : idx === i);
+  const update = (item, i, patch) => onChange((list) => list.map((it, idx) => (sameRow(item, i)(it, idx) ? { ...it, ...patch } : it)));
+  const remove = (item, i) => onChange((list) => list.filter((it, idx) => !sameRow(item, i)(it, idx)));
   // Category suggestions: whatever this list already uses, plus defaults.
   const listId = `sections-${title.replace(/\W+/g, '-').toLowerCase()}`;
   const sectionOptions = [...new Set([...sectionNames(items), ...suggestedSections])];
   const add = () =>
-    onChange([...items, { id: `new-${Date.now()}`, name: '', image: '', price: '', desc: '', section: items[items.length - 1]?.section || '' }]);
+    onChange((list) => [
+      ...list,
+      { id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name: '', image: '', price: '', desc: '', section: list[list.length - 1]?.section || '' },
+    ]);
 
   return (
     <div>
@@ -100,12 +114,12 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.5fr_1fr]">
               <input
                 value={item.name}
-                onChange={(e) => update(i, { name: e.target.value })}
+                onChange={(e) => update(item, i, { name: e.target.value })}
                 placeholder="Name *"
                 className={`${inputCls}${inv(e.name)}`}
               />
               <input
-                {...integerInputProps(String(item.price ?? ''), (v) => update(i, { price: v }))}
+                {...integerInputProps(String(item.price ?? ''), (v) => update(item, i, { price: v }))}
                 placeholder={`${priceLabel} (₦) *`}
                 className={`${inputCls}${inv(e.price)}`}
               />
@@ -114,7 +128,7 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
             <div className="mt-2">
               <input
                 value={item.section || ''}
-                onChange={(e) => update(i, { section: e.target.value })}
+                onChange={(e) => update(item, i, { section: e.target.value })}
                 list={listId}
                 placeholder="Category * (e.g. Food, Drinks, Desserts)"
                 aria-label="Category"
@@ -126,7 +140,7 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
               <MediaInput
                 client={supabase}
                 value={item.image}
-                onChange={(v) => update(i, { image: v })}
+                onChange={(v) => update(item, i, { image: v })}
                 placeholder="Image URL *"
                 accept="image/*"
                 invalid={!!e.image}
@@ -135,14 +149,14 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
             </div>
             <textarea
               value={item.desc || ''}
-              onChange={(e) => update(i, { desc: e.target.value })}
+              onChange={(e) => update(item, i, { desc: e.target.value })}
               placeholder="Short description (optional)"
               rows={2}
               className={`${inputCls} mt-2 resize-none`}
             />
             <button
               type="button"
-              onClick={() => remove(i)}
+              onClick={() => remove(item, i)}
               className="mt-2 flex items-center gap-1 text-xs font-semibold text-red-500 hover:underline"
             >
               <Trash2 size={12} /> Remove
@@ -180,22 +194,66 @@ export default function VenueForm() {
   // highlight clears as soon as that field is filled in.
   const [showErrors, setShowErrors] = useState(false);
 
+  const [saving, setSaving] = useState(false);
+  const uploadsInProgress = useActiveUploads();
+
+  // ---- Draft autosave: everything typed is kept in this browser until the
+  // venue is saved, so reloading the page doesn't lose it.
+  const draftKey = makeDraftKey(PORTAL, id);
+  const venuesSnapshot = useVenuesStore();
+  const loadedRef = useRef(false);
+  // What the form was loaded with; the draft is only written once the form
+  // differs from it, so just opening the page doesn't create a draft.
+  const baselineRef = useRef(emptyVenue);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+
+  const savedVersion = () => {
+    if (!isEdit) return emptyVenue;
+    const existing = getVenueById(id);
+    if (!existing) return null;
+    const { area, state } = splitLocation(existing.location);
+    return {
+      ...emptyVenue,
+      ...existing,
+      location: area,
+      state,
+      rating: String(existing.rating),
+      fromPrice: String(existing.fromPrice),
+    };
+  };
+
   useEffect(() => {
-    if (isEdit) {
-      const existing = getVenueById(id);
-      if (existing) {
-        const { area, state } = splitLocation(existing.location);
-        setVenue({
-          ...emptyVenue,
-          ...existing,
-          location: area,
-          state,
-          rating: String(existing.rating),
-          fromPrice: String(existing.fromPrice),
-        });
-      }
+    if (loadedRef.current) return;
+    const draft = readDraft(draftKey);
+    if (draft) {
+      const restored = { ...emptyVenue, ...draft };
+      baselineRef.current = restored;
+      setVenue(restored);
+      setRestoredDraft(true);
+      loadedRef.current = true;
+      return;
     }
-  }, [id, isEdit]);
+    const saved = savedVersion();
+    if (!saved) return; // venues still loading — try again when they arrive
+    baselineRef.current = saved;
+    setVenue(saved);
+    loadedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, venuesSnapshot]);
+
+  useEffect(() => {
+    if (!loadedRef.current || venue === baselineRef.current) return;
+    writeDraft(draftKey, venue);
+  }, [venue, draftKey]);
+
+  const discardDraft = () => {
+    clearDraft(draftKey);
+    const saved = savedVersion() || emptyVenue;
+    baselineRef.current = saved;
+    setVenue(saved);
+    setRestoredDraft(false);
+    setShowErrors(false);
+  };
 
   const set = (patch) => setVenue((v) => ({ ...v, ...patch }));
 
@@ -211,23 +269,29 @@ export default function VenueForm() {
     set({ tab: name, category: cat?.singular || name });
   };
 
-  const handleGalleryChange = (index, value) => {
-    const gallery = [...venue.gallery];
-    gallery[index] = value;
-    set({ gallery });
-  };
-  const addGalleryUrl = () => set({ gallery: [...venue.gallery, ''] });
-  const removeGalleryUrl = (i) => set({ gallery: venue.gallery.filter((_, idx) => idx !== i) });
+  const handleGalleryChange = (index, value) =>
+    setVenue((v) => ({ ...v, gallery: v.gallery.map((g, idx) => (idx === index ? value : g)) }));
+  const addGalleryUrl = () => setVenue((v) => ({ ...v, gallery: [...v.gallery, ''] }));
+  const removeGalleryUrl = (i) => setVenue((v) => ({ ...v, gallery: v.gallery.filter((_, idx) => idx !== i) }));
 
-  const updateFee = (i, patch) => set({ hiddenFees: venue.hiddenFees.map((f, idx) => (idx === i ? { ...f, ...patch } : f)) });
-  const addFee = () => set({ hiddenFees: [...venue.hiddenFees, { label: '', amount: '' }] });
-  const removeFee = (i) => set({ hiddenFees: venue.hiddenFees.filter((_, idx) => idx !== i) });
+  const updateFee = (i, patch) =>
+    setVenue((v) => ({ ...v, hiddenFees: v.hiddenFees.map((f, idx) => (idx === i ? { ...f, ...patch } : f)) }));
+  const addFee = () => setVenue((v) => ({ ...v, hiddenFees: [...v.hiddenFees, { label: '', amount: '' }] }));
+  const removeFee = (i) => setVenue((v) => ({ ...v, hiddenFees: v.hiddenFees.filter((_, idx) => idx !== i) }));
 
   const validation = useMemo(() => validateVenue(venue), [venue]);
   const err = showErrors ? validation.errors : { gallery: {}, menu: {}, activities: {}, fees: {} };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
+    if (uploadsInProgress > 0) {
+      notify(
+        `Please wait — ${uploadsInProgress} photo/video upload${uploadsInProgress > 1 ? 's are' : ' is'} still in progress.`,
+        'warning',
+      );
+      return;
+    }
     if (!validation.valid) {
       setShowErrors(true);
       const { summary } = validation;
@@ -257,6 +321,7 @@ export default function VenueForm() {
         .map((f) => ({ label: f.label, amount: parseFeeAmount(f.amount) })),
     };
 
+    setSaving(true);
     try {
       if (isEdit) {
         await updateVenue(id, payload);
@@ -265,9 +330,17 @@ export default function VenueForm() {
         await addVenue(payload);
         notify(`${payload.name} added.`, 'success');
       }
+      clearDraft(draftKey);
       navigate('/venues');
-    } catch {
-      notify('Could not save this venue. Please try again.', 'warning');
+    } catch (error) {
+      console.error('[VenueForm] save failed', error);
+      notify(
+        `Could not save this venue${error?.message ? `: ${error.message}` : ''}. Your changes are kept — please try again.`,
+        'warning',
+        8000,
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -282,6 +355,22 @@ export default function VenueForm() {
         </Link>
         <h1 className="text-2xl font-extrabold text-ink dark:text-white">{isEdit ? 'Edit Venue' : 'Add Venue'}</h1>
       </div>
+
+      {restoredDraft && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <span className="flex items-center gap-2">
+            <History size={16} className="shrink-0" />
+            Restored your unsaved changes from earlier. They stay here until you save.
+          </span>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="rounded-full border border-amber-300 px-3 py-1 text-xs font-bold transition hover:bg-amber-100 dark:border-amber-500/40 dark:hover:bg-amber-500/20"
+          >
+            Discard changes
+          </button>
+        </div>
+      )}
 
       <div className="space-y-5">
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
@@ -424,11 +513,11 @@ export default function VenueForm() {
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(menu) => set({ menu })} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" errors={err.menu} listError={err.menuList} />
+          <ItemRows title="Menu items" items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" errors={err.menu} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Activities" items={venue.activities} onChange={(activities) => set({ activities })} priceLabel="Price" addLabel="Add activity" errors={err.activities} listError={err.activitiesList} />
+          <ItemRows title="Activities" items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel="Add activity" errors={err.activities} listError={err.activitiesList} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
@@ -482,9 +571,22 @@ export default function VenueForm() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           type="submit"
-          className="flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark"
+          disabled={saving}
+          className="flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
         >
-          <Save size={16} /> {isEdit ? 'Save changes' : 'Add venue'}
+          {saving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Saving…
+            </>
+          ) : uploadsInProgress > 0 ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Uploading {uploadsInProgress}…
+            </>
+          ) : (
+            <>
+              <Save size={16} /> {isEdit ? 'Save changes' : 'Add venue'}
+            </>
+          )}
         </motion.button>
       </div>
     </form>

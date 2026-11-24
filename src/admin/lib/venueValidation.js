@@ -73,16 +73,12 @@ export function validateVenue(venue) {
     });
   });
 
-  const menuCount = (venue.menu || []).filter(itemInUse).length;
   const activityCount = (venue.activities || []).filter(itemInUse).length;
   if (!venue.hasMenu && !venue.hasActivities) {
     errors.kinds = 'Tick “Has menu” and/or “Has activities”';
     summary.push('has menu / has activities');
   }
-  if (venue.hasMenu && menuCount === 0) {
-    errors.menuList = 'Add at least one menu item (or untick “Has menu”)';
-    summary.push('at least one menu item');
-  }
+  // Menu items are optional: a venue can be listed before its menu is added.
   if (venue.hasActivities && activityCount === 0) {
     errors.activitiesList = 'Add at least one activity (or untick “Has activities”)';
     summary.push('at least one activity');

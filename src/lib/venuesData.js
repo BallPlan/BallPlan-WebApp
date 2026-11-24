@@ -25,17 +25,21 @@ function toFormItem(i) {
 
 function normalizeVenue(v, itemsByVenue) {
   const items = itemsByVenue[v.id] || [];
+  const menu = items.filter((i) => i.kind === 'menu').map(toFormItem);
+  const activities = items.filter((i) => i.kind === 'activity').map(toFormItem);
   return {
     ...v,
     fromPrice: v.from_price,
     openTime: v.open_time,
     closeTime: v.close_time,
     hasVideo: v.has_video,
-    hasMenu: v.has_menu,
-    hasActivities: v.has_activities,
+    // Menu items are optional when posting a venue, so only show the
+    // Menu/Activities tab once there's actually something in it.
+    hasMenu: v.has_menu && menu.length > 0,
+    hasActivities: v.has_activities && activities.length > 0,
     hiddenFees: v.hidden_fees || [],
-    menu: items.filter((i) => i.kind === 'menu').map(toFormItem),
-    activities: items.filter((i) => i.kind === 'activity').map(toFormItem),
+    menu,
+    activities,
   };
 }
 
