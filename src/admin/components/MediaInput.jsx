@@ -74,7 +74,7 @@ export default function MediaInput({ value, onChange, client, placeholder = 'Ima
         type="button"
         disabled={uploading}
         onClick={() => fileRef.current?.click()}
-        title={accept.includes('video') ? 'Choose photo or video from your device (up to 50 MB)' : 'Choose a photo from your device'}
+        title={accept.includes('video') ? 'Choose photo or video from your device (videos up to 100 MB)' : 'Choose a photo from your device'}
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand transition hover:bg-brand hover:text-white disabled:pointer-events-none"
       >
         {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}

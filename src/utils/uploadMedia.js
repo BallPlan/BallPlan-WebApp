@@ -1,5 +1,7 @@
-// Uploads a venue/menu photo or video to the public `venue-media` Storage
-// bucket and returns its public URL — the URL is what gets saved on the
+// Uploads a venue/menu photo or video to Cloudinary (signed by the
+// `sign-cloudinary-upload` Edge Function), falling back to the public
+// `venue-media` Supabase Storage bucket if Cloudinary isn't available, and
+// returns its public URL — the URL is what gets saved on the
 // venue, not the file itself. (Files used to be read into base64 data:
 // URLs and stored in the database row: slow, impossible for videos/large
 // files, and every visitor downloaded them with the venue list.)
@@ -84,42 +86,103 @@ async function doUpload(client, original, onProgress) {
   if (!/^(image|video)\//.test(original.type)) throw new Error('Please choose a photo or video.');
 
   const file = original.type.startsWith('image/') ? await shrinkImage(original) : original;
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error(`That file is ${Math.round(file.size / 1024 / 1024)} MB — the limit is 50 MB. Try a shorter or compressed video.`);
-  }
 
   const { data } = await client.auth.getSession();
   const session = data.session;
   if (!session) throw new Error('Your session has expired — please sign in again.');
 
-  const path = `${session.user.id}/${crypto.randomUUID()}.${extensionFor(file)}`;
-  const base = import.meta.env.VITE_SUPABASE_URL;
+  // Cloudinary first. If it isn't set up (or the signing function is
+  // unreachable), fall back to Supabase Storage so uploads keep working.
+  let signed = null;
+  try {
+    const { data: sig, error } = await client.functions.invoke('sign-cloudinary-upload', { body: {} });
+    if (error) throw error;
+    if (sig?.signature) signed = sig;
+  } catch (err) {
+    console.warn('[uploadMedia] Cloudinary signing unavailable, using Supabase Storage', err);
+  }
 
-  await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${base}/storage/v1/object/${BUCKET}/${path}`);
-    xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-    xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_ANON_KEY);
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-    xhr.setRequestHeader('Cache-Control', 'max-age=31536000');
+  const url = signed ? await uploadToCloudinary(signed, file, onProgress) : await uploadToSupabase(session, file, onProgress);
+  onProgress?.(1);
+  return url;
+}
+
+// Cloudinary free-plan limits per file.
+const CLOUDINARY_MAX_IMAGE = 10 * 1024 * 1024;
+const CLOUDINARY_MAX_VIDEO = 100 * 1024 * 1024;
+
+function sendWithProgress(xhr, body, onProgress) {
+  return new Promise((resolve, reject) => {
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress?.(e.loaded / e.total);
     };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) return resolve();
-      let message = 'Upload failed.';
-      try {
-        message = JSON.parse(xhr.responseText).message || message;
-      } catch {
-        /* keep the generic message */
-      }
-      if (xhr.status === 413 || /size/i.test(message)) message = 'That file is too large — the limit is 50 MB.';
-      reject(new Error(message));
-    };
+    xhr.onload = () => resolve(xhr);
     xhr.onerror = () => reject(new Error('Upload failed — check your connection and try again.'));
-    xhr.send(file);
+    xhr.send(body);
   });
+}
 
-  onProgress?.(1);
+const mb = (bytes) => Math.round(bytes / 1024 / 1024);
+
+async function uploadToCloudinary({ cloudName, apiKey, folder, timestamp, signature }, file, onProgress) {
+  const isVideo = file.type.startsWith('video/');
+  const limit = isVideo ? CLOUDINARY_MAX_VIDEO : CLOUDINARY_MAX_IMAGE;
+  if (file.size > limit) {
+    throw new Error(
+      `That ${isVideo ? 'video' : 'photo'} is ${mb(file.size)} MB — the limit is ${mb(limit)} MB.${isVideo ? ' Try a shorter or compressed video.' : ''}`,
+    );
+  }
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', apiKey);
+  form.append('timestamp', String(timestamp));
+  form.append('folder', folder);
+  form.append('signature', signature);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`);
+  await sendWithProgress(xhr, form, onProgress);
+
+  let res = {};
+  try {
+    res = JSON.parse(xhr.responseText);
+  } catch {
+    /* handled below */
+  }
+  if (xhr.status < 200 || xhr.status >= 300 || !res.secure_url) {
+    const message = res.error?.message || 'Upload failed.';
+    throw new Error(/size|too large/i.test(message) ? `That file is too large — the limit is ${mb(limit)} MB.` : message);
+  }
+  // Photos: let Cloudinary pick the best format and quality for each
+  // visitor's device (smaller, faster images in the main app).
+  return isVideo ? res.secure_url : res.secure_url.replace('/image/upload/', '/image/upload/f_auto,q_auto/');
+}
+
+async function uploadToSupabase(session, file, onProgress) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`That file is ${mb(file.size)} MB — the limit is 50 MB. Try a shorter or compressed video.`);
+  }
+  const path = `${session.user.id}/${crypto.randomUUID()}.${extensionFor(file)}`;
+  const base = import.meta.env.VITE_SUPABASE_URL;
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${base}/storage/v1/object/${BUCKET}/${path}`);
+  xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+  xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_ANON_KEY);
+  xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+  xhr.setRequestHeader('Cache-Control', 'max-age=31536000');
+  await sendWithProgress(xhr, file, onProgress);
+
+  if (xhr.status < 200 || xhr.status >= 300) {
+    let message = 'Upload failed.';
+    try {
+      message = JSON.parse(xhr.responseText).message || message;
+    } catch {
+      /* keep the generic message */
+    }
+    if (xhr.status === 413 || /size/i.test(message)) message = 'That file is too large — the limit is 50 MB.';
+    throw new Error(message);
+  }
   return `${base}/storage/v1/object/public/${BUCKET}/${path}`;
 }
