@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -16,7 +16,8 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
-import MediaView from '../../components/MediaView';
+import VenueGallery from '../../components/VenueGallery';
+import Lightbox from '../../components/Lightbox';
 import { groupBySection } from '../../utils/itemSections';
 import { useVenuesStore, getVenueById, setVenuePublished } from '../lib/agentData';
 import { formatNaira, formatFeeAmount } from '../../utils/currency';
@@ -68,6 +69,7 @@ export default function AgentVenueDetails() {
 
   const venuesSnapshot = useVenuesStore();
   const venue = useMemo(() => getVenueById(id), [id, venuesSnapshot]);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   if (!venue) {
     return (
@@ -79,6 +81,9 @@ export default function AgentVenueDetails() {
       </div>
     );
   }
+
+  // Main photo/video first, then the gallery (same order as the main app).
+  const media = [...new Set([venue.hero, ...(venue.gallery || [])].filter(Boolean))];
 
   const handleTogglePublish = async () => {
     try {
@@ -125,33 +130,25 @@ export default function AgentVenueDetails() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
-          <div className="overflow-hidden rounded-2xl bg-white shadow-card dark:bg-[#1a1b20]">
-            <div className="relative aspect-video">
-              <MediaView src={venue.hero} seed={venue.id} alt={venue.name} className="h-full w-full object-cover" controls />
+          <VenueGallery
+            media={media}
+            venueId={venue.id}
+            alt={venue.name}
+            paused={lightboxIndex != null}
+            onOpen={setLightboxIndex}
+            overlay={
               <span
-                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${
+                className={`absolute left-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-bold ${
                   venue.published === false ? 'bg-white/90 text-ink/60' : 'bg-emerald-500 text-white'
                 }`}
               >
                 {venue.published === false ? 'Inactive' : 'Active'}
               </span>
-            </div>
-            {venue.gallery?.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto p-3">
-                {venue.gallery.map((src, i) => (
-                  <MediaView
-                    key={i}
-                    src={src}
-                    seed={`${venue.id}-${i}`}
-                    alt=""
-                    className="h-16 w-20 shrink-0 rounded-lg object-cover"
-                  />
-                ))}
-              </div>
-            )}
-            <div className="p-5">
-              <p className="text-sm leading-relaxed text-ink/60 dark:text-white/60">{venue.description}</p>
-            </div>
+            }
+          />
+
+          <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
+            <p className="text-sm leading-relaxed text-ink/60 dark:text-white/60">{venue.description}</p>
           </div>
 
           {venue.menu?.length > 0 && (
@@ -254,6 +251,7 @@ export default function AgentVenueDetails() {
         </div>
       </div>
 
+      <Lightbox images={media} index={lightboxIndex} onClose={() => setLightboxIndex(null)} onChange={setLightboxIndex} />
     </div>
   );
 }
