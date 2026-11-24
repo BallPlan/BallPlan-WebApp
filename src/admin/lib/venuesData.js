@@ -96,6 +96,9 @@ async function fetchAll() {
 fetchAll();
 onSignedIn(fetchAll);
 
+// Re-reads venues from the database (e.g. after the media move).
+export const refreshVenues = () => fetchAll();
+
 export function getVenues() {
   return venues;
 }

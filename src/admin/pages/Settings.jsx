@@ -4,6 +4,7 @@ import {
   ShieldCheck,
   Users as UsersIcon,
   LifeBuoy,
+  HardDrive,
   Camera,
   Trash2,
   Ban,
@@ -27,6 +28,7 @@ import {
 } from '../lib/staffData';
 import { useToast } from '../../context/ToastContext';
 import { useAdminAuth } from '../context/AdminAuthContext';
+import MediaMigrationSection from '../components/MediaMigrationSection';
 
 // Support's Settings nav is deliberately smaller than admin's: just
 // Profile Information and Teams (agent-account management, same feature
@@ -39,6 +41,7 @@ const TABS = [
   { id: 'security', label: 'Security', icon: ShieldCheck, ownerOnly: true },
   { id: 'team', label: 'Agents', supportLabel: 'Teams', icon: UsersIcon },
   { id: 'support', label: 'Support', icon: LifeBuoy, ownerOnly: true },
+  { id: 'storage', label: 'Storage', icon: HardDrive, ownerOnly: true },
 ];
 
 const inputCls =
@@ -542,6 +545,7 @@ export default function Settings() {
         {tab === 'profile' && <ProfileSection />}
         {tab === 'security' && isOwner && <SecuritySection />}
         {tab === 'team' && <StaffSection role="agent" roleLabel="Agent" emailPlaceholder="agent@ballplan.net" />}
+        {tab === 'storage' && isOwner && <MediaMigrationSection />}
         {tab === 'support' && isOwner && <StaffSection role="support" roleLabel="Support" emailPlaceholder="support@ballplan.net" />}
       </div>
     </div>
