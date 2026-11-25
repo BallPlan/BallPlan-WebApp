@@ -14,6 +14,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { downloadPlanPdf } from '../utils/generatePlanPdf';
 import { reportPlanDownloaded } from '../lib/analytics';
+import { itemLabels } from '../utils/itemLabels';
+import SwapOrder from '../components/SwapOrder';
 
 // Picks up to `limit` venues from `list`, cycling through `categories` one
 // at a time (Restaurant, then Beach, then Restaurant, ...) instead of just
@@ -138,6 +140,7 @@ export default function PlanResult() {
   }
 
   const venue = matches[pageIndex];
+  const labels = itemLabels(venue);
   const venueSelection = selections[venue.id] || { menu: [], activities: [] };
 
   const updateQty = (kind, itemId, qty) => {
@@ -318,13 +321,14 @@ export default function PlanResult() {
               </span>
             </div>
 
+            <SwapOrder swap={labels.activitiesFirst}>
             {selectedMenu.length > 0 && (
               <div className="mt-6">
                 <div className="mb-3 flex items-center gap-2">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600">
                     <UtensilsCrossed size={14} />
                   </span>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-ink/50 dark:text-white/50">Menu Picks</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-ink/50 dark:text-white/50">{labels.menu} Picks</h3>
                 </div>
                 <div className="space-y-3">
                   {selectedMenu.map((item) => (
@@ -340,7 +344,7 @@ export default function PlanResult() {
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-sky-600">
                     <Ticket size={14} />
                   </span>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-ink/50 dark:text-white/50">Activities Picks</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-ink/50 dark:text-white/50">{labels.activities} Picks</h3>
                 </div>
                 <div className="space-y-3">
                   {selectedActivities.map((item) => (
@@ -349,6 +353,7 @@ export default function PlanResult() {
                 </div>
               </div>
             )}
+            </SwapOrder>
 
             <div className="mt-6 grid grid-cols-3 gap-2.5 border-t border-ink/10 pt-5 dark:border-white/10">
               <StatPill label="Total" value={formatNaira(total)} tone="brand" />

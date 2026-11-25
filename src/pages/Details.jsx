@@ -24,6 +24,17 @@ import { getVenueCoords, osmEmbedUrl, osmViewUrl } from '../utils/geo';
 import { useFavorites } from '../context/FavoritesContext';
 import { useBudgetAwareCart } from '../utils/useBudgetAwareCart';
 import { useReviews } from '../context/ReviewsContext';
+import { itemLabels } from '../utils/itemLabels';
+
+// 'Menu'/'Activities' tabs the venue has, in display order (cinemas show
+// Now Showing — the activities — first).
+function itemTabs(venue) {
+  const list = [];
+  if (venue?.hasMenu) list.push('Menu');
+  if (venue?.hasActivities) list.push('Activities');
+  return itemLabels(venue).activitiesFirst ? list.reverse() : list;
+}
+const firstItemTab = (venue) => itemTabs(venue)[0];
 
 export default function Details() {
   const { id } = useParams();
@@ -48,17 +59,13 @@ export default function Details() {
   // default once venue data actually arrives, but only if the user hasn't
   // already picked a tab themselves by then.
   const autoSelectedTab = useRef(false);
-  const [tab, setTab] = useState(() => {
-    if (venue?.hasMenu) return 'Menu';
-    if (venue?.hasActivities) return 'Activities';
-    return 'Reviews';
-  });
+  const [tab, setTab] = useState(() => firstItemTab(venue) || 'Reviews');
 
   useEffect(() => {
     if (autoSelectedTab.current || !venue) return;
     autoSelectedTab.current = true;
-    if (venue.hasMenu) setTab('Menu');
-    else if (venue.hasActivities) setTab('Activities');
+    const first = firstItemTab(venue);
+    if (first) setTab(first);
   }, [venue]);
 
   const selectTab = (t) => {
@@ -86,10 +93,9 @@ export default function Details() {
     toggleFavorite(venue.id);
   };
 
+  const labels = itemLabels(venue);
   const tabs = useMemo(() => {
-    const list = [];
-    if (venue?.hasMenu) list.push('Menu');
-    if (venue?.hasActivities) list.push('Activities');
+    const list = itemTabs(venue);
     list.push('Reviews', 'Photos', 'Location');
     return list;
   }, [venue]);
@@ -254,7 +260,7 @@ export default function Details() {
                 : 'text-ink/40 hover:text-ink/70 dark:text-white/40 dark:hover:text-white/70'
             }`}
           >
-            {t}
+            {t === 'Menu' ? labels.menu : t === 'Activities' ? labels.activities : t}
             {tab === t && (
               <motion.span layoutId="details-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-brand dark:bg-brand" />
             )}

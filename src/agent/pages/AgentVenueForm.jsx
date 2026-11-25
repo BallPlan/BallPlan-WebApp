@@ -15,6 +15,8 @@ import { sectionNames } from '../../utils/itemSections';
 import { useActiveUploads } from '../../utils/uploadMedia';
 import { draftKey as makeDraftKey, readDraft, writeDraft, clearDraft } from '../../utils/venueDraft';
 import { validateVenue } from '../../admin/lib/venueValidation';
+import { itemLabels } from '../../utils/itemLabels';
+import SwapOrder from '../../components/SwapOrder';
 
 // Which portal this form runs in; drafts are kept separately per portal.
 const PORTAL = 'agent';
@@ -185,6 +187,7 @@ export default function AgentVenueForm() {
   const [categories, setCategories] = useState([]);
 
   const [venue, setVenue] = useState(emptyVenue);
+  const labels = itemLabels(venue);
   // Turned on by a Save attempt with required fields missing; each
   // highlight clears as soon as that field is filled in.
   const [showErrors, setShowErrors] = useState(false);
@@ -430,8 +433,9 @@ export default function AgentVenueForm() {
           </Field>
           <div className="mt-4 flex flex-wrap gap-5">
             {[
-              ['hasMenu', 'Has menu'],
-              ['hasActivities', 'Has activities'],
+              ...(labels.activitiesFirst
+                ? [['hasActivities', `Has ${labels.activities.toLowerCase()}`], ['hasMenu', `Has ${labels.menu.toLowerCase()}`]]
+                : [['hasMenu', `Has ${labels.menu.toLowerCase()}`], ['hasActivities', `Has ${labels.activities.toLowerCase()}`]]),
               ['hasVideo', 'Has video'],
             ].map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 text-sm font-medium text-ink/70 dark:text-white/70">
@@ -519,13 +523,15 @@ export default function AgentVenueForm() {
           </button>
         </section>
 
+        <SwapOrder swap={labels.activitiesFirst}>
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Menu items" items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel="Add menu item" errors={err.menu} />
+          <ItemRows title={labels.menu === 'Menu' ? 'Menu items' : labels.menu} items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel={`Add ${labels.menuItem}`} errors={err.menu} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title="Activities" items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel="Add activity" errors={err.activities} listError={err.activitiesList} />
+          <ItemRows title={labels.activities} items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel={`Add ${labels.activityItem}`} errors={err.activities} listError={err.activitiesList} />
         </section>
+        </SwapOrder>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
           <h2 className="text-sm font-bold uppercase tracking-wide text-ink/40 dark:text-white/40">Hidden fees</h2>

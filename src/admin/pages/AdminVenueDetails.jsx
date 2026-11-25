@@ -21,12 +21,14 @@ import ImageWithFallback from '../../components/ImageWithFallback';
 import VenueGallery from '../../components/VenueGallery';
 import Lightbox from '../../components/Lightbox';
 import { groupBySection } from '../../utils/itemSections';
+import { itemLabels } from '../../utils/itemLabels';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PostedBy from '../components/PostedBy';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
 import { useReportsStore, getReports } from '../lib/reportsData';
 import { formatNaira, formatFeeAmount } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
+import SwapOrder from '../../components/SwapOrder';
 
 const STATUS_STYLE = {
   pending: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
@@ -193,13 +195,15 @@ export default function AdminVenueDetails() {
             <p className="text-sm leading-relaxed text-ink/60 dark:text-white/60">{venue.description}</p>
           </div>
 
+          <SwapOrder swap={itemLabels(venue).activitiesFirst}>
           {venue.menu?.length > 0 && (
-            <ItemSectionsCard title="Menu" icon={UtensilsCrossed} items={venue.menu} />
+            <ItemSectionsCard title={itemLabels(venue).menu} icon={UtensilsCrossed} items={venue.menu} />
           )}
 
           {venue.activities?.length > 0 && (
-            <ItemSectionsCard title="Activities" icon={Ticket} items={venue.activities} />
+            <ItemSectionsCard title={itemLabels(venue).activities} icon={Ticket} items={venue.activities} />
           )}
+          </SwapOrder>
 
           {venueReports.length > 0 && (
             <div className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">

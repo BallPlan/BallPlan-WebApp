@@ -19,9 +19,11 @@ import ImageWithFallback from '../../components/ImageWithFallback';
 import VenueGallery from '../../components/VenueGallery';
 import Lightbox from '../../components/Lightbox';
 import { groupBySection } from '../../utils/itemSections';
+import { itemLabels } from '../../utils/itemLabels';
 import { useVenuesStore, getVenueById, setVenuePublished } from '../lib/agentData';
 import { formatNaira, formatFeeAmount } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
+import SwapOrder from '../../components/SwapOrder';
 
 // Menu / Activities grouped by the categories the editor typed (Food,
 // Drinks, Desserts, …); a single category shows as a plain list.
@@ -151,13 +153,15 @@ export default function AgentVenueDetails() {
             <p className="text-sm leading-relaxed text-ink/60 dark:text-white/60">{venue.description}</p>
           </div>
 
+          <SwapOrder swap={itemLabels(venue).activitiesFirst}>
           {venue.menu?.length > 0 && (
-            <ItemSectionsCard title="Menu" icon={UtensilsCrossed} items={venue.menu} />
+            <ItemSectionsCard title={itemLabels(venue).menu} icon={UtensilsCrossed} items={venue.menu} />
           )}
 
           {venue.activities?.length > 0 && (
-            <ItemSectionsCard title="Activities" icon={Ticket} items={venue.activities} />
+            <ItemSectionsCard title={itemLabels(venue).activities} icon={Ticket} items={venue.activities} />
           )}
+          </SwapOrder>
 
         </div>
 

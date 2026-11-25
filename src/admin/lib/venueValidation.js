@@ -4,6 +4,7 @@
 // "in use" once anything is typed into it; a completely empty row is
 // ignored (it's dropped on save).
 import { isValidNigeriaPhone } from '../../components/NigeriaPhoneInput';
+import { itemLabels } from '../../utils/itemLabels';
 
 const blank = (v) => !String(v ?? '').trim();
 const itemInUse = (i) => !blank(i.name) || !blank(i.price) || !blank(i.image) || !blank(i.desc) || !blank(i.section);
@@ -58,9 +59,10 @@ export function validateVenue(venue) {
   if (emptyRows) summary.push(`${emptyRows} empty photo/video row${emptyRows > 1 ? 's' : ''}`);
 
   // Items: every row in use needs name, price, category and image.
+  const L = itemLabels(venue);
   [
-    ['menu', 'menu item'],
-    ['activities', 'activity'],
+    ['menu', L.menuItem],
+    ['activities', L.activityItem],
   ].forEach(([key, noun]) => {
     (venue[key] || []).forEach((item, i) => {
       if (!itemInUse(item)) return;
@@ -75,13 +77,13 @@ export function validateVenue(venue) {
 
   const activityCount = (venue.activities || []).filter(itemInUse).length;
   if (!venue.hasMenu && !venue.hasActivities) {
-    errors.kinds = 'Tick “Has menu” and/or “Has activities”';
-    summary.push('has menu / has activities');
+    errors.kinds = `Tick “Has ${L.menu.toLowerCase()}” and/or “Has ${L.activities.toLowerCase()}”`;
+    summary.push(`has ${L.menu.toLowerCase()} / has ${L.activities.toLowerCase()}`);
   }
   // Menu items are optional: a venue can be listed before its menu is added.
   if (venue.hasActivities && activityCount === 0) {
-    errors.activitiesList = 'Add at least one activity (or untick “Has activities”)';
-    summary.push('at least one activity');
+    errors.activitiesList = `Add at least one ${L.activityItem} (or untick “Has ${L.activities.toLowerCase()}”)`;
+    summary.push(`at least one ${L.activityItem}`);
   }
 
   (venue.hiddenFees || []).forEach((f, i) => {
