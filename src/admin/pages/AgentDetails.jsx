@@ -10,10 +10,14 @@ import {
   Flame,
   Loader2,
   Mail,
+  Trophy,
+  Activity,
+  TrendingUp,
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import DayMark from '../../components/DayMark';
-import { dayKey, computeStreak } from '../../utils/streak';
+import { dayKey, computeStreak, shiftDay } from '../../utils/streak';
+import { rankAgents, ACTIVE_WINDOW_DAYS } from '../lib/agentRanking';
 import StatCard from '../components/StatCard';
 import { useStaffStore, getAgents } from '../lib/staffData';
 import { useVenuesStore, getVenues } from '../lib/venuesData';
@@ -104,6 +108,27 @@ export default function AgentDetails() {
   const lastActive = days?.[0]?.last_seen;
   const streak = useMemo(() => computeStreak((days || []).map((d) => d.day)), [days]);
 
+  // Every agent's recent days, to rank this agent against the others.
+  const [allDays, setAllDays] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('staff_daily_activity')
+      .select('user_id, day')
+      .gte('day', shiftDay(dayKey(), -120))
+      .limit(10000)
+      .then(({ data }) => !cancelled && setAllDays(data || []));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const ranking = useMemo(
+    () => (allDays ? rankAgents(getAgents(), getVenues(), allDays) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allDays, staffSnapshot, venuesSnapshot],
+  );
+  const me = ranking?.find((a) => a.id === id);
+
   if (!agent) {
     return (
       <div className="py-24 text-center">
@@ -164,7 +189,12 @@ export default function AgentDetails() {
           <span className="text-ink/45 dark:text-white/45">Streak</span>
           <span className="flex items-center gap-1 font-semibold text-ink dark:text-white sm:justify-end">
             <Flame size={14} className="text-brand" />
-            {days ? `${streak.current} day${streak.current === 1 ? '' : 's'} (best ${streak.longest})` : '…'}
+            {days ? `${streak.current} day${streak.current === 1 ? '' : 's'}` : '…'}
+          </span>
+          <span className="text-ink/45 dark:text-white/45">Ranking</span>
+          <span className="flex items-center gap-1 font-semibold text-ink dark:text-white sm:justify-end">
+            <Trophy size={14} className="text-amber-500" />
+            {me ? `#${me.overallRank} of ${ranking.length} overall` : '…'}
           </span>
           <span className="text-ink/45 dark:text-white/45">Last active</span>
           <span className="font-semibold text-ink dark:text-white">
@@ -180,6 +210,77 @@ export default function AgentDetails() {
         <StatCard label="Menu items" value={totals.menu} icon={UtensilsCrossed} tone="amber" />
         <StatCard label="Activities" value={totals.activities} icon={Ticket} tone="sky" />
       </div>
+
+      {/* Ranking */}
+      {me && (
+        <div className="mt-5 rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-ink dark:text-white">
+            <Trophy size={16} className="text-amber-500" /> Agent ranking
+          </h2>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              { label: 'Overall', rank: me.overallRank, icon: Trophy, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400', note: 'Activity and performance combined' },
+              { label: 'Most active', rank: me.activeRank, icon: Activity, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400', note: `${me.activeDays} of the last ${ACTIVE_WINDOW_DAYS} days active` },
+              { label: 'Best performing', rank: me.performanceRank, icon: TrendingUp, tone: 'bg-brand/10 text-brand', note: `${me.venues} venue${me.venues === 1 ? '' : 's'}, ${me.items} menu items & activities` },
+            ].map(({ label, rank, icon: Icon, tone, note }) => (
+              <div key={label} className="flex items-center gap-3 rounded-xl bg-cream p-4 dark:bg-white/5">
+                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                  <Icon size={19} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-ink/50 dark:text-white/50">{label}</p>
+                  <p className="text-xl font-extrabold text-ink dark:text-white">
+                    #{rank} <span className="text-xs font-semibold text-ink/40 dark:text-white/40">of {ranking.length}</span>
+                  </p>
+                  <p className="truncate text-[11px] text-ink/45 dark:text-white/45">{note}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead>
+                <tr className="text-xs font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
+                  <th className="pb-2 font-semibold">#</th>
+                  <th className="pb-2 font-semibold">Agent</th>
+                  <th className="pb-2 text-center font-semibold">Active days ({ACTIVE_WINDOW_DAYS}d)</th>
+                  <th className="pb-2 text-center font-semibold">Streak</th>
+                  <th className="pb-2 text-center font-semibold">Venues</th>
+                  <th className="pb-2 text-center font-semibold">Items</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink/5 dark:divide-white/5">
+                {ranking.map((a) => (
+                  <tr key={a.id} className={a.id === id ? 'bg-brand/5 dark:bg-brand/10' : ''}>
+                    <td className="py-2.5 pl-2 pr-3 font-extrabold text-ink dark:text-white">
+                      {a.overallRank === 1 ? '🥇' : a.overallRank === 2 ? '🥈' : a.overallRank === 3 ? '🥉' : a.overallRank}
+                    </td>
+                    <td className="py-2.5 pr-3">
+                      {a.id === id ? (
+                        <span className="font-bold text-brand">{a.name} (this agent)</span>
+                      ) : (
+                        <Link to={`/agents/${a.id}`} className="font-semibold text-ink hover:text-brand dark:text-white">
+                          {a.name}
+                        </Link>
+                      )}
+                      {a.status === 'suspended' && <span className="ml-2 text-[11px] font-bold text-red-500">Suspended</span>}
+                    </td>
+                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.activeDays}</td>
+                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.streak}</td>
+                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.venues}</td>
+                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.items}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[11px] text-ink/40 dark:text-white/40">
+            Most active = days active in the last {ACTIVE_WINDOW_DAYS} days (ties: longer streak). Best performing = venues uploaded
+            (ties: more menu items & activities, then views). Overall combines both.
+          </p>
+        </div>
+      )}
 
       {/* Venues */}
       <div className="mt-5 rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
