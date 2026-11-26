@@ -26,6 +26,7 @@ export default function BottomNav() {
             to={to}
             end={to === '/'}
             aria-label={label}
+            data-tour={{ '/favorites': 'favorites', '/notifications': 'notifications', '/plan-outing': 'plan-outing' }[to]}
             className={({ isActive }) =>
               `flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200 ${
                 isActive
@@ -51,7 +52,7 @@ export default function BottomNav() {
         ))}
       </nav>
 
-      <NavLink to="/my-plan" aria-label="My Plan" className="fixed bottom-20 right-4 z-50 lg:hidden">
+      <NavLink to="/my-plan" aria-label="My Plan" data-tour="my-plan" className="fixed bottom-20 right-4 z-50 lg:hidden">
         <motion.div
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}

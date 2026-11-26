@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, LogOut, User, Sun, Moon } from 'lucide-react';
+import { Search, LogOut, User, Sun, Moon, HelpCircle } from 'lucide-react';
 import logoIcon from '../assets/logo-icon.png';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -49,7 +49,7 @@ export default function Header() {
         <span className="font-display text-lg font-extrabold tracking-tight text-ink dark:text-white">BallPlan</span>
       </Link>
 
-      <div ref={searchRef} className="relative hidden flex-1 sm:block sm:max-w-md">
+      <div ref={searchRef} data-tour="search" className="relative hidden flex-1 sm:block sm:max-w-md">
         <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/40 dark:text-white/40" />
         <input
           type="text"
@@ -101,6 +101,7 @@ export default function Header() {
       <button
         type="button"
         onClick={() => navigate('/search')}
+        data-tour="search"
         aria-label="Search"
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition hover:bg-white dark:text-white dark:hover:bg-white/10 sm:hidden"
       >
@@ -108,6 +109,16 @@ export default function Header() {
       </button>
 
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('ballplan:open-tour'))}
+          aria-label="How BallPlan works"
+          data-tour="help"
+          title="How BallPlan works"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink/60 transition hover:bg-white dark:text-white/60 dark:hover:bg-white/10"
+        >
+          <HelpCircle size={18} />
+        </button>
         <button
           type="button"
           onClick={toggleTheme}
@@ -121,6 +132,7 @@ export default function Header() {
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate('/plan-outing')}
+          data-tour="plan-outing"
           className="hidden rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark sm:inline-flex"
         >
           Plan an outing

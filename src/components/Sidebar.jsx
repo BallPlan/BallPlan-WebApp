@@ -36,6 +36,7 @@ export default function Sidebar() {
             to={to}
             end={to === '/'}
             aria-label={label}
+            data-tour={{ '/favorites': 'favorites', '/notifications': 'notifications', '/plan-outing': 'plan-outing' }[to]}
             className={({ isActive }) =>
               `group relative flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
                 isActive
@@ -64,6 +65,7 @@ export default function Sidebar() {
         <NavLink
           to="/my-plan"
           aria-label="My Plan"
+          data-tour="my-plan"
           className={({ isActive }) =>
             `group relative mt-1 flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200 ${
               isActive

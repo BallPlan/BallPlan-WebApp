@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import BottomNav from './BottomNav';
 import Header from './Header';
+import WelcomeTour from './WelcomeTour';
 
 export default function Layout() {
   const location = useLocation();
@@ -34,6 +35,7 @@ export default function Layout() {
         </motion.main>
       </div>
       <BottomNav />
+      <WelcomeTour />
     </div>
   );
 }

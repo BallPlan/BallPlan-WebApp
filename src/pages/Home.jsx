@@ -51,7 +51,9 @@ export default function Home() {
         </motion.div>
       )}
 
-      <CategoryTabs active={tab} onChange={setTab} />
+      <div data-tour="categories">
+        <CategoryTabs active={tab} onChange={setTab} />
+      </div>
 
       <div className="mt-6 mb-6">
         <p className="text-sm font-semibold text-brand">Curated for you</p>
@@ -69,7 +71,9 @@ export default function Home() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {venues.map((venue, i) => (
-            <VenueCard venue={venue} key={venue.id} index={i} compact />
+            <div key={venue.id} data-tour={i === 0 ? 'venue' : undefined} className="grid min-w-0">
+              <VenueCard venue={venue} index={i} compact />
+            </div>
           ))}
         </div>
       )}
