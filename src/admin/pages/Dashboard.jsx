@@ -18,6 +18,8 @@ import { useReportsStore, getReports } from '../lib/reportsData';
 import { useActivityStore, getActivity, refreshActivity } from '../lib/activityData';
 import { fetchVisitorSeries } from '../lib/analyticsData';
 import { useAdminThemeStore } from '../../shared/store';
+import AgentLeaderboard from '../../components/AgentLeaderboard';
+import { supabase } from '../lib/supabaseClient';
 
 const RANGES = ['Day', 'Week', 'Month'];
 const RANGE_PHRASE = { Day: 'in the last 24 hours', Week: 'in the last 7 days', Month: 'in the last 12 months' };
@@ -172,6 +174,10 @@ export default function Dashboard() {
             })}
           </div>
         </div>
+      </div>
+
+      <div className="mt-5">
+        <AgentLeaderboard client={supabase} mode="staff" />
       </div>
     </div>
   );

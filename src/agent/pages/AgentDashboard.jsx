@@ -3,6 +3,9 @@ import { Store, UtensilsCrossed, Eye, Clock } from 'lucide-react';
 import StatCard from '../../admin/components/StatCard';
 import VisitorLineChart from '../../admin/components/VisitorLineChart';
 import { useVenuesStore, getVenues, getViewsOverTime } from '../lib/agentData';
+import AgentLeaderboard from '../../components/AgentLeaderboard';
+import { supabase } from '../lib/supabaseClient';
+import { useAgentAuth } from '../context/AgentAuthContext';
 
 function timeAgo(iso) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -40,6 +43,7 @@ export default function AgentDashboard() {
     [venues],
   );
 
+  const { user } = useAgentAuth();
   return (
     <div>
       <h1 className="text-2xl font-extrabold text-ink dark:text-white">Dashboard</h1>
@@ -74,6 +78,10 @@ export default function AgentDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-5">
+        <AgentLeaderboard client={supabase} mode="agent" currentUserId={user?.id} />
       </div>
     </div>
   );

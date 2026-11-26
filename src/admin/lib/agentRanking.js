@@ -20,32 +20,18 @@ function rankBy(list, compare, field) {
 }
 
 /**
- * @param agents   profiles rows (role agent)
- * @param venues   admin venues (with createdBy, menu, activities, viewsCount)
- * @param dayRows  staff_daily_activity rows ({ user_id, day }) for the window
- * @returns agents sorted by overall rank, with stats and ranks attached
+ * Ranks agents from their raw numbers.
+ * @param stats [{ id, name, status, avatarUrl, days: ['YYYY-MM-DD'], venues, items, views }]
+ * @returns the agents sorted by overall rank, with activeDays, streak and
+ *   activeRank / performanceRank / overallRank attached
  */
-export function rankAgents(agents, venues, dayRows) {
+export function rankAgentStats(stats) {
   const since = shiftDay(dayKey(), -(ACTIVE_WINDOW_DAYS - 1));
-  const daysByAgent = {};
-  dayRows.forEach((r) => {
-    (daysByAgent[r.user_id] ||= []).push(r.day);
-  });
-
-  const list = agents.map((a) => {
-    const mine = venues.filter((v) => v.createdBy === a.id);
-    const days = daysByAgent[a.id] || [];
-    return {
-      id: a.id,
-      name: [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email,
-      status: a.status,
-      activeDays: days.filter((d) => d >= since).length,
-      streak: computeStreak(days).current,
-      venues: mine.length,
-      items: mine.reduce((n, v) => n + v.menu.length + v.activities.length, 0),
-      views: mine.reduce((n, v) => n + (Number(v.viewsCount) || 0), 0),
-    };
-  });
+  const list = stats.map((a) => ({
+    ...a,
+    activeDays: (a.days || []).filter((d) => d >= since).length,
+    streak: computeStreak(a.days || []).current,
+  }));
 
   const byActivity = (a, b) => b.activeDays - a.activeDays || b.streak - a.streak;
   const byPerformance = (a, b) => b.venues - a.venues || b.items - a.items || b.views - a.views;
@@ -56,6 +42,29 @@ export function rankAgents(agents, venues, dayRows) {
   });
   const byOverall = (a, b) => a.score - b.score || a.performanceRank - b.performanceRank || a.activeRank - b.activeRank;
   rankBy(list, byOverall, 'overallRank');
-
   return list.sort(byOverall);
+}
+
+/**
+ * Same, built from admin data (profiles, venues, staff_daily_activity rows).
+ */
+export function rankAgents(agents, venues, dayRows) {
+  const daysByAgent = {};
+  dayRows.forEach((r) => {
+    (daysByAgent[r.user_id] ||= []).push(r.day);
+  });
+  return rankAgentStats(
+    agents.map((a) => {
+      const mine = venues.filter((v) => v.createdBy === a.id);
+      return {
+        id: a.id,
+        name: [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email,
+        status: a.status,
+        days: daysByAgent[a.id] || [],
+        venues: mine.length,
+        items: mine.reduce((n, v) => n + v.menu.length + v.activities.length, 0),
+        views: mine.reduce((n, v) => n + (Number(v.viewsCount) || 0), 0),
+      };
+    }),
+  );
 }
