@@ -1,16 +1,24 @@
-// Ranks all agents against each other for the admin Agent details page.
+// Ranks agents against each other with a points score (admin Agent
+// details, and the leaderboard on every dashboard).
 //
-//  * Most active: days active (signed in / worked on venues) in the last
-//    30 days; ties go to the longer current streak.
-//  * Best performing: venues uploaded; ties go to more menu items +
-//    activities, then more customer views.
-//  * Overall: the two ranks added together (lower is better); ties go to
-//    the better performer.
+// Performance points  = 10 per venue + 1 per menu item/activity
+//   Every item counts, so an agent whose venues need long menus
+//   (restaurants, lounges) earns for that work, while one adding many
+//   small venues (beaches, experiences) still earns for each venue.
+//   Items-per-venue alone was rejected: one venue with 50 items would beat
+//   ten venues with 40 items each.
+// Activity points     = 2 per active day in the last 30 days
+//                       + 1 per day of current streak (counted up to 30)
+//   Showing up regularly counts, and an unbroken streak counts extra.
+// Overall points      = performance + activity.
 //
-// Each rank is "competition" style: equal results share a rank (1, 2, 2, 4).
+// Most active / Best performing / Overall rank by those three totals.
+// Equal points share a rank (1, 2, 2, 4); ties are broken by customer
+// views, then items.
 import { computeStreak, dayKey, shiftDay } from '../../utils/streak';
 
 export const ACTIVE_WINDOW_DAYS = 30;
+export const POINTS = { venue: 10, item: 1, activeDay: 2, streakDay: 1 };
 
 function rankBy(list, compare, field) {
   const sorted = [...list].sort(compare);
@@ -22,25 +30,24 @@ function rankBy(list, compare, field) {
 /**
  * Ranks agents from their raw numbers.
  * @param stats [{ id, name, status, avatarUrl, days: ['YYYY-MM-DD'], venues, items, views }]
- * @returns the agents sorted by overall rank, with activeDays, streak and
+ * @returns the agents sorted by overall rank, with activeDays, streak,
+ *   activityPoints / performancePoints / points and
  *   activeRank / performanceRank / overallRank attached
  */
 export function rankAgentStats(stats) {
   const since = shiftDay(dayKey(), -(ACTIVE_WINDOW_DAYS - 1));
-  const list = stats.map((a) => ({
-    ...a,
-    activeDays: (a.days || []).filter((d) => d >= since).length,
-    streak: computeStreak(a.days || []).current,
-  }));
-
-  const byActivity = (a, b) => b.activeDays - a.activeDays || b.streak - a.streak;
-  const byPerformance = (a, b) => b.venues - a.venues || b.items - a.items || b.views - a.views;
-  rankBy(list, byActivity, 'activeRank');
-  rankBy(list, byPerformance, 'performanceRank');
-  list.forEach((a) => {
-    a.score = a.activeRank + a.performanceRank;
+  const list = stats.map((a) => {
+    const activeDays = (a.days || []).filter((d) => d >= since).length;
+    const streak = computeStreak(a.days || []).current;
+    const activityPoints = activeDays * POINTS.activeDay + Math.min(streak, ACTIVE_WINDOW_DAYS) * POINTS.streakDay;
+    const performancePoints = a.venues * POINTS.venue + a.items * POINTS.item;
+    return { ...a, activeDays, streak, activityPoints, performancePoints, points: activityPoints + performancePoints };
   });
-  const byOverall = (a, b) => a.score - b.score || a.performanceRank - b.performanceRank || a.activeRank - b.activeRank;
+
+  const tieBreak = (a, b) => b.views - a.views || b.items - a.items;
+  rankBy(list, (a, b) => b.activityPoints - a.activityPoints || b.streak - a.streak, 'activeRank');
+  rankBy(list, (a, b) => b.performancePoints - a.performancePoints || tieBreak(a, b), 'performanceRank');
+  const byOverall = (a, b) => b.points - a.points || tieBreak(a, b);
   rankBy(list, byOverall, 'overallRank');
   return list.sort(byOverall);
 }
@@ -67,4 +74,12 @@ export function rankAgents(agents, venues, dayRows) {
       };
     }),
   );
+}
+
+// What it would take to gain `gap` points, in plain words.
+export function pointsToCatchUp(gap) {
+  const g = Math.max(1, gap);
+  const venues = Math.ceil(g / POINTS.venue);
+  const days = Math.ceil(g / (POINTS.activeDay + POINTS.streakDay));
+  return { points: g, items: g, venues, days };
 }

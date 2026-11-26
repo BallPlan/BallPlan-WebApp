@@ -17,7 +17,7 @@ import {
 import ImageWithFallback from '../../components/ImageWithFallback';
 import DayMark from '../../components/DayMark';
 import { dayKey, computeStreak, shiftDay } from '../../utils/streak';
-import { rankAgents, ACTIVE_WINDOW_DAYS } from '../lib/agentRanking';
+import { rankAgents, ACTIVE_WINDOW_DAYS, POINTS } from '../lib/agentRanking';
 import StatCard from '../components/StatCard';
 import { useStaffStore, getAgents } from '../lib/staffData';
 import { useVenuesStore, getVenues } from '../lib/venuesData';
@@ -219,9 +219,9 @@ export default function AgentDetails() {
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { label: 'Overall', rank: me.overallRank, icon: Trophy, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400', note: 'Activity and performance combined' },
-              { label: 'Most active', rank: me.activeRank, icon: Activity, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400', note: `${me.activeDays} of the last ${ACTIVE_WINDOW_DAYS} days active` },
-              { label: 'Best performing', rank: me.performanceRank, icon: TrendingUp, tone: 'bg-brand/10 text-brand', note: `${me.venues} venue${me.venues === 1 ? '' : 's'}, ${me.items} menu items & activities` },
+              { label: 'Overall', rank: me.overallRank, icon: Trophy, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400', note: `${me.points} points (activity + performance)` },
+              { label: 'Most active', rank: me.activeRank, icon: Activity, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400', note: `${me.activityPoints} pts · ${me.activeDays}/${ACTIVE_WINDOW_DAYS} days active, ${me.streak}-day streak` },
+              { label: 'Best performing', rank: me.performanceRank, icon: TrendingUp, tone: 'bg-brand/10 text-brand', note: `${me.performancePoints} pts · ${me.venues} venue${me.venues === 1 ? '' : 's'}, ${me.items} items` },
             ].map(({ label, rank, icon: Icon, tone, note }) => (
               <div key={label} className="flex items-center gap-3 rounded-xl bg-cream p-4 dark:bg-white/5">
                 <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone}`}>
@@ -244,6 +244,7 @@ export default function AgentDetails() {
                 <tr className="text-xs font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
                   <th className="pb-2 font-semibold">#</th>
                   <th className="pb-2 font-semibold">Agent</th>
+                  <th className="pb-2 text-center font-semibold">Points</th>
                   <th className="pb-2 text-center font-semibold">Active days ({ACTIVE_WINDOW_DAYS}d)</th>
                   <th className="pb-2 text-center font-semibold">Streak</th>
                   <th className="pb-2 text-center font-semibold">Venues</th>
@@ -266,6 +267,7 @@ export default function AgentDetails() {
                       )}
                       {a.status === 'suspended' && <span className="ml-2 text-[11px] font-bold text-red-500">Suspended</span>}
                     </td>
+                    <td className="py-2.5 text-center font-extrabold text-brand">{a.points}</td>
                     <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.activeDays}</td>
                     <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.streak}</td>
                     <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.venues}</td>
@@ -276,8 +278,9 @@ export default function AgentDetails() {
             </table>
           </div>
           <p className="mt-3 text-[11px] text-ink/40 dark:text-white/40">
-            Most active = days active in the last {ACTIVE_WINDOW_DAYS} days (ties: longer streak). Best performing = venues uploaded
-            (ties: more menu items & activities, then views). Overall combines both.
+            Points: +{POINTS.venue} per venue, +{POINTS.item} per menu item or activity (best performing), +{POINTS.activeDay} per
+            active day in the last {ACTIVE_WINDOW_DAYS} days and +{POINTS.streakDay} per day of current streak (most active).
+            Overall = all points.
           </p>
         </div>
       )}

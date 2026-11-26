@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Activity, TrendingUp, Loader2, Lightbulb, ChevronDown } from 'lucide-react';
-import { rankAgentStats, ACTIVE_WINDOW_DAYS } from '../admin/lib/agentRanking';
+import { rankAgentStats, pointsToCatchUp, ACTIVE_WINDOW_DAYS, POINTS } from '../admin/lib/agentRanking';
 
 // Agent leaderboard for the dashboards. Data comes from the
 // get_agent_leaderboard() database function (works for admin, support and
@@ -12,7 +12,7 @@ import { rankAgentStats, ACTIVE_WINDOW_DAYS } from '../admin/lib/agentRanking';
 const TOP = 10;
 
 const medal = (rank) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank);
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word, many) => `${n} ${n === 1 ? word : many || `${word}s`}`;
 
 function Initials({ agent, highlight }) {
   const letters = agent.name
@@ -34,34 +34,36 @@ function Initials({ agent, highlight }) {
   );
 }
 
-// Plain-language tips: what this agent needs to do to move up.
+// Plain-language tips: how far this agent is from the one above them and
+// what would close the gap.
 function improvementTips(me, list) {
   const tips = [];
-  const leaderActive = Math.max(...list.map((a) => a.activeDays));
-  if (me.activeRank === 1) {
-    tips.push(`You’re the most active agent. Keep signing in every day to stay on top.`);
-  } else {
-    const above = list.filter((a) => a.activeRank < me.activeRank).sort((a, b) => b.activeRank - a.activeRank)[0];
-    const gap = Math.max(1, (above?.activeDays ?? leaderActive) - me.activeDays);
+  // The agent just ahead: the lowest score that's still above mine.
+  const above = list.filter((a) => a.points > me.points).sort((a, b) => a.points - b.points)[0] || null;
+  if (!above) {
+    const second = list.find((a) => a.id !== me.id && a.points <= me.points);
     tips.push(
-      `Be more active: you’ve been active ${me.activeDays} of the last ${ACTIVE_WINDOW_DAYS} days. About ${plural(gap, 'more day')} would move you up (the most active agent has ${leaderActive}).`,
+      second
+        ? `You’re #1, ${plural(me.points - second.points, 'point')} ahead of ${second.name}. Keep going to stay on top!`
+        : 'You’re #1. Keep going to stay on top!',
+    );
+  } else {
+    const c = pointsToCatchUp(above.points - me.points + 1);
+    tips.push(
+      `You’re ${plural(c.points, 'point')} behind ${above.name} (#${above.overallRank}). To pass them: add ${plural(c.items, 'menu item or activity', 'menu items or activities')}, or ${plural(c.venues, 'new venue')}, or stay active ${plural(c.days, 'more day')} in a row.`,
     );
   }
-  if (me.performanceRank === 1) {
-    tips.push('You’re the best performer. Keep adding venues and full menus to stay ahead.');
-  } else {
-    const above = list.filter((a) => a.performanceRank < me.performanceRank).sort((a, b) => b.performanceRank - a.performanceRank)[0];
-    if (above && above.venues > me.venues) {
-      tips.push(
-        `Upload more venues: you have ${plural(me.venues, 'venue')}. ${plural(above.venues - me.venues, 'more venue')} would move you up.`,
-      );
-    } else if (above) {
-      tips.push(
-        `Add more menu items and activities to your venues: you have ${me.items}. ${plural(Math.max(1, above.items - me.items + 1), 'more item')} would move you up.`,
-      );
-    }
+  if (me.activeDays < ACTIVE_WINDOW_DAYS * 0.7) {
+    tips.push(
+      `Show up more: you were active ${me.activeDays} of the last ${ACTIVE_WINDOW_DAYS} days. Every active day is +${POINTS.activeDay} points.`,
+    );
   }
-  if (me.streak < 2) tips.push('Start a streak: open your dashboard every day, even just to check your venues.');
+  if (me.streak < 2) {
+    tips.push(`Start a streak: open your dashboard every day. Each day in a row is +${POINTS.streakDay} extra point.`);
+  }
+  if (me.venues > 0 && me.items / me.venues < 10) {
+    tips.push(`Fill out your venues: every menu item or activity you add is +${POINTS.item} point, on top of +${POINTS.venue} per venue.`);
+  }
   return tips;
 }
 
@@ -130,10 +132,10 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
             <>
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                  { label: 'Your overall rank', rank: me.overallRank, icon: Trophy, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
-                  { label: 'Most active', rank: me.activeRank, icon: Activity, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' },
-                  { label: 'Best performing', rank: me.performanceRank, icon: TrendingUp, tone: 'bg-brand/10 text-brand' },
-                ].map(({ label, rank, icon: Icon, tone }) => (
+                  { label: 'Your overall rank', rank: me.overallRank, pts: me.points, icon: Trophy, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
+                  { label: 'Most active', rank: me.activeRank, pts: me.activityPoints, icon: Activity, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' },
+                  { label: 'Best performing', rank: me.performanceRank, pts: me.performancePoints, icon: TrendingUp, tone: 'bg-brand/10 text-brand' },
+                ].map(({ label, rank, pts, icon: Icon, tone }) => (
                   <div key={label} className="flex items-center gap-3 rounded-xl bg-cream p-3.5 dark:bg-white/5">
                     <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tone}`}>
                       <Icon size={18} />
@@ -143,6 +145,7 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
                       <p className="text-lg font-extrabold text-ink dark:text-white">
                         #{rank} <span className="text-xs font-semibold text-ink/40 dark:text-white/40">of {ranking.length}</span>
                       </p>
+                      <p className="text-[11px] text-ink/45 dark:text-white/45">{pts} points</p>
                     </div>
                   </div>
                 ))}
@@ -169,6 +172,7 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
                 <tr className="text-xs font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
                   <th className="pb-2 pl-2 font-semibold">#</th>
                   <th className="pb-2 font-semibold">Agent</th>
+                  <th className="pb-2 text-center font-semibold">Points</th>
                   <th className="pb-2 text-center font-semibold">Active days ({ACTIVE_WINDOW_DAYS}d)</th>
                   <th className="pb-2 text-center font-semibold">Streak</th>
                   <th className="pb-2 text-center font-semibold">Venues</th>
@@ -197,6 +201,7 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
                           {a.status === 'suspended' && <span className="text-[11px] font-bold text-red-500">Suspended</span>}
                         </div>
                       </td>
+                      <td className="py-2.5 text-center font-extrabold text-brand">{a.points}</td>
                       <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.activeDays}</td>
                       <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.streak > 0 ? `🔥 ${a.streak}` : '0'}</td>
                       <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.venues}</td>
@@ -219,8 +224,8 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
             </button>
           )}
           <p className="mt-3 text-[11px] text-ink/40 dark:text-white/40">
-            Ranked on activity (days active in the last {ACTIVE_WINDOW_DAYS} days) and performance (venues uploaded, then menu
-            items &amp; activities) combined.
+            Points: +{POINTS.venue} per venue, +{POINTS.item} per menu item or activity, +{POINTS.activeDay} per active day in the
+            last {ACTIVE_WINDOW_DAYS} days, +{POINTS.streakDay} per day of current streak.
           </p>
         </>
       )}
