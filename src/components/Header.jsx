@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import ImageWithFallback from './ImageWithFallback';
 import ConfirmDialog from './ConfirmDialog';
 import { filterVenues, useVenuesStore } from '../lib/venuesData';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatFromPrice } from '../utils/currency';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -90,7 +90,7 @@ export default function Header() {
                       {venue.category} · {venue.location}
                     </p>
                   </div>
-                  <span className="shrink-0 text-xs font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                  <span className="shrink-0 text-xs font-bold text-brand">{formatFromPrice(venue)}</span>
                 </button>
               ))
             )}

@@ -5,7 +5,7 @@ import ImageWithFallback from '../../components/ImageWithFallback';
 import ActionMenu from '../../admin/components/ActionMenu';
 import StatCard from '../../admin/components/StatCard';
 import { useVenuesStore, getVenues, setVenuePublished } from '../lib/agentData';
-import { formatNaira } from '../../utils/currency';
+import { formatNaira, formatFromPrice } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
 export default function AgentVenues() {
@@ -95,7 +95,7 @@ export default function AgentVenues() {
                     </p>
                   </div>
                 </button>
-                <span className="text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                <span className="text-sm font-bold text-brand">{formatFromPrice(venue)}</span>
                 <span className="flex items-center gap-1 text-sm text-ink/60 dark:text-white/60">
                   <Eye size={13} className="text-ink/35 dark:text-white/35" /> {venue.viewsCount ?? 0}
                 </span>

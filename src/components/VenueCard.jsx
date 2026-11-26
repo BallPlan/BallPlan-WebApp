@@ -3,7 +3,7 @@ import { ArrowRight, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ImageWithFallback from './ImageWithFallback';
 import RatingBadge from './RatingBadge';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatFromPrice, isFreeFrom } from '../utils/currency';
 import { useFavorites } from '../context/FavoritesContext';
 
 // `compact` (Home, Favorites, Search): two-up on phones like the design — tighter
@@ -66,7 +66,8 @@ export default function VenueCard({ venue, index = 0, compact = false }) {
           }`}
         >
           <p className={`${(compact ? 'min-w-0 truncate text-[10px] sm:text-sm' : 'text-sm')} whitespace-nowrap text-ink/60 dark:text-white/60`}>
-            from <span className={`${(compact ? 'text-[13px] sm:text-base' : 'text-base')} font-bold text-brand`}>{formatNaira(venue.fromPrice)}</span>
+            {isFreeFrom(venue) ? '' : 'from '}
+            <span className={`${(compact ? 'text-[13px] sm:text-base' : 'text-base')} font-bold text-brand`}>{formatFromPrice(venue)}</span>
           </p>
           <motion.button
             whileHover={{ scale: 1.05 }}

@@ -17,7 +17,7 @@ import RatingStars from '../components/RatingStars';
 import RatingDistribution from '../components/RatingDistribution';
 import ReviewCard from '../components/ReviewCard';
 import WriteReviewModal from '../components/WriteReviewModal';
-import { formatNaira, formatFeeAmount } from '../utils/currency';
+import { formatNaira, formatFeeAmount, formatFromPrice, isFreeFrom } from '../utils/currency';
 import { isOpenNow } from '../utils/time';
 import { openDirections } from '../utils/maps';
 import { getVenueCoords, osmEmbedUrl, osmViewUrl } from '../utils/geo';
@@ -207,8 +207,8 @@ export default function Details() {
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink/60 dark:text-white/60">{venue.description}</p>
 
           <div className="mt-4 flex items-center gap-2">
-            <span className="text-sm text-ink/50 dark:text-white/50">from</span>
-            <span className="text-2xl font-extrabold text-brand">{formatNaira(venue.fromPrice)}</span>
+            {!isFreeFrom(venue) && <span className="text-sm text-ink/50 dark:text-white/50">from</span>}
+            <span className="text-2xl font-extrabold text-brand">{formatFromPrice(venue)}</span>
           </div>
 
           {venue.hiddenFees?.length > 0 && (

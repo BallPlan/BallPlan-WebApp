@@ -15,7 +15,7 @@ import {
   setVenuePublished,
   deleteVenue,
 } from '../lib/venuesData';
-import { formatNaira } from '../../utils/currency';
+import { formatNaira, formatFromPrice } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 
 export default function Venues() {
@@ -207,7 +207,7 @@ export default function Venues() {
                   </div>
                 </button>
                 <span className="text-sm text-ink/60 dark:text-white/60">{venue.category}</span>
-                <span className="text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                <span className="text-sm font-bold text-brand">{formatFromPrice(venue)}</span>
                 <span className="flex items-center gap-1 text-sm text-ink/60 dark:text-white/60">
                   <Eye size={13} className="text-ink/35 dark:text-white/35" /> {venue.viewsCount ?? 0}
                 </span>
@@ -267,7 +267,7 @@ export default function Venues() {
                   {venue.postedBy?.roleLabel ? ` · ${venue.postedBy.roleLabel}` : ''}
                 </p>
                 <div className="mt-1.5 flex items-center justify-between">
-                  <p className="text-sm font-bold text-brand">{formatNaira(venue.fromPrice)}</p>
+                  <p className="text-sm font-bold text-brand">{formatFromPrice(venue)}</p>
                   <p className="flex items-center gap-1 text-xs text-ink/40 dark:text-white/40">
                     <Eye size={12} /> {venue.viewsCount ?? 0}
                   </p>

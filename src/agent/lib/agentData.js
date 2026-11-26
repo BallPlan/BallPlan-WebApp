@@ -6,6 +6,7 @@
 // is what actually keeps "my venues" meaning just that.
 import { useSyncExternalStore } from 'react';
 import { supabase } from './supabaseClient';
+import { cheapestItemPrice } from '../../utils/fromPrice';
 
 let venues = [];
 let currentAgentId = null;
@@ -115,10 +116,7 @@ function slugify(name) {
 // Same rule as admin: from_price is always the cheapest item, never
 // hand-typed, so it can't drift from what's actually on the menu.
 function minItemPrice(venue) {
-  const prices = [...(venue.menu || []), ...(venue.activities || [])]
-    .map((i) => Number(i.price) || 0)
-    .filter((p) => p > 0);
-  return prices.length ? Math.min(...prices) : Number(venue.fromPrice) || 0;
+  return cheapestItemPrice(venue) ?? (Number(venue.fromPrice) || 0);
 }
 
 function venueColumns(venue) {

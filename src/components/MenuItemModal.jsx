@@ -4,7 +4,7 @@ import ImageWithFallback from './ImageWithFallback';
 import Sparkline from './Sparkline';
 import PriceTrendBadge from './PriceTrendBadge';
 import PlanQuantityButton from './PlanQuantityButton';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatItemPrice } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
 export default function MenuItemModal({ item, qty = 0, onAdd, onDecrement, onReport, onClose }) {
@@ -43,7 +43,7 @@ export default function MenuItemModal({ item, qty = 0, onAdd, onDecrement, onRep
           <div className="p-6">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-xl font-extrabold text-ink dark:text-white">{item.name}</h3>
-              <span className="shrink-0 text-lg font-extrabold text-brand">{formatNaira(item.price)}</span>
+              <span className="shrink-0 text-lg font-extrabold text-brand">{formatItemPrice(item.price)}</span>
             </div>
 
             {item.desc && (

@@ -26,7 +26,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import PostedBy from '../components/PostedBy';
 import { useVenuesStore, getVenueById, setVenuePublished, deleteVenue } from '../lib/venuesData';
 import { useReportsStore, getReports } from '../lib/reportsData';
-import { formatNaira, formatFeeAmount } from '../../utils/currency';
+import { formatNaira, formatFeeAmount, formatItemPrice, formatFromPrice } from '../../utils/currency';
 import { useToast } from '../../context/ToastContext';
 import SwapOrder from '../../components/SwapOrder';
 
@@ -60,7 +60,7 @@ function ItemSectionsCard({ title, icon: Icon, items }) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-brand">{formatNaira(item.price)}</p>
+                      <p className="text-xs font-bold text-brand">{formatItemPrice(item.price)}</p>
                       <span className="flex items-center gap-0.5 text-[11px] text-ink/40 dark:text-white/40">
                         <ShoppingBag size={11} /> {item.cartAddCount ?? 0}
                       </span>
@@ -241,7 +241,7 @@ export default function AdminVenueDetails() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">From price</span>
-                <span className="font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                <span className="font-bold text-brand">{formatFromPrice(venue)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink/50 dark:text-white/50">Category</span>

@@ -3,7 +3,7 @@ import { Flag, Info } from 'lucide-react';
 import ImageWithFallback from './ImageWithFallback';
 import PriceTrendBadge from './PriceTrendBadge';
 import PlanQuantityButton from './PlanQuantityButton';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatItemPrice } from '../utils/currency';
 import { getPriceHistory } from '../utils/priceHistory';
 
 // On phones (two-up grid) the price-change badge moves from beside the
@@ -50,7 +50,7 @@ export default function MenuItemCard({ item, qty = 0, onAdd, onDecrement, onRepo
           )}
         </div>
         <div className="mt-auto flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-          <span className="text-sm font-bold text-brand">{formatNaira(item.price)}</span>
+          <span className="text-sm font-bold text-brand">{formatItemPrice(item.price)}</span>
           <PlanQuantityButton
             qty={qty}
             itemName={item.name}

@@ -16,10 +16,13 @@ export const MAX_SECTION_WORDS = 2;
 export const sectionTooLong = (section) => String(section ?? '').trim().split(/\s+/).filter(Boolean).length > MAX_SECTION_WORDS;
 export const SECTION_TOO_LONG_MSG = 'Category must be 1–2 words (e.g. Food, Rides). Put longer text in the description.';
 
-function itemErrors(item, sectionOptional) {
+function itemErrors(item, sectionOptional, freeAllowed) {
   const e = {};
   if (blank(item.name)) e.name = 'Name required';
-  if (!(Number(item.price) > 0)) e.price = 'Price required';
+  if (freeAllowed) {
+    // ₦0 is fine (free entry), but a price must still be typed.
+    if (blank(item.price) || !(Number(item.price) >= 0)) e.price = 'Price required (0 if free)';
+  } else if (!(Number(item.price) > 0)) e.price = 'Price required';
   if (blank(item.section)) {
     if (!sectionOptional) e.section = 'Category required';
   }
@@ -75,7 +78,7 @@ export function validateVenue(venue) {
   ].forEach(([key, noun]) => {
     (venue[key] || []).forEach((item, i) => {
       if (!itemInUse(item)) return;
-      const e = itemErrors(item, L.sectionOptional);
+      const e = itemErrors(item, L.sectionOptional, L.freeAllowed);
       if (Object.keys(e).length) {
         errors[key][i] = e;
         const missing = Object.values(e).map((m) => m.replace(' required', '').toLowerCase());

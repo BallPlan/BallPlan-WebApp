@@ -7,7 +7,7 @@ import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
 import QuantityStepper from '../components/QuantityStepper';
 import BackButton from '../components/BackButton';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatItemPrice, formatFromPrice, isFreeFrom } from '../utils/currency';
 import { openDirections } from '../utils/maps';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -317,7 +317,8 @@ export default function PlanResult() {
                 Direction
               </button>
               <span className="text-sm text-ink/50 dark:text-white/50">
-                from <span className="font-bold text-brand">{formatNaira(venue.fromPrice)}</span>
+                {isFreeFrom(venue) ? '' : 'from '}
+                <span className="font-bold text-brand">{formatFromPrice(venue)}</span>
               </span>
             </div>
 
@@ -440,7 +441,7 @@ function ItemRow({ item, onChangeQty }) {
         <p className="truncate text-sm font-bold text-ink dark:text-white">{item.name}</p>
         <QuantityStepper value={item.qty} onChange={onChangeQty} min={0} size="sm" />
       </div>
-      <span className="shrink-0 font-bold text-brand">{formatNaira(item.price * item.qty)}</span>
+      <span className="shrink-0 font-bold text-brand">{formatItemPrice(item.price * item.qty)}</span>
     </motion.div>
   );
 }

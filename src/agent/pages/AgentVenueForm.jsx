@@ -18,6 +18,7 @@ import { validateVenue, sectionTooLong, SECTION_TOO_LONG_MSG } from '../../admin
 import { itemLabels } from '../../utils/itemLabels';
 import { celebrateStreak } from '../lib/streakData';
 import SwapOrder from '../../components/SwapOrder';
+import { cheapestItemPrice as cheapestPrice } from '../../utils/fromPrice';
 
 // Which portal this form runs in; drafts are kept separately per portal.
 const PORTAL = 'agent';
@@ -70,7 +71,7 @@ const inputCls =
 // Red outline for an input that failed the required-field check.
 const inv = (error) => (error ? ' border-red-400 ring-2 ring-red-400/20 dark:border-red-500' : '');
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError, sectionOptional = false }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError, sectionOptional = false, freeAllowed = false }) {
   // `onChange` takes an updater (list => new list) applied to the *latest*
   // list. Photo uploads finish seconds later; updating a snapshot captured
   // when the upload started would wipe out every row added or edited (and
@@ -116,7 +117,7 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
               />
               <input
                 {...integerInputProps(String(item.price ?? ''), (v) => update(item, i, { price: v }))}
-                placeholder={`${priceLabel} (₦) *`}
+                placeholder={freeAllowed ? `${priceLabel} (₦) * 0 if free` : `${priceLabel} (₦) *`}
                 className={`${inputCls}${inv(e.price)}`}
               />
             </div>
@@ -263,10 +264,7 @@ export default function AgentVenueForm() {
 
   // "From price" is always the cheapest menu/activity item, computed live —
   // never hand-typed, so it can't drift from what's actually on the menu.
-  const cheapestItemPrice = useMemo(() => {
-    const prices = [...venue.menu, ...venue.activities].map((i) => Number(i.price) || 0).filter((p) => p > 0);
-    return prices.length ? Math.min(...prices) : null;
-  }, [venue.menu, venue.activities]);
+  const cheapestItemPrice = useMemo(() => cheapestPrice(venue), [venue]);
 
   const handleCategoryChange = (name) => {
     const cat = categories.find((c) => c.name === name);
@@ -528,11 +526,11 @@ export default function AgentVenueForm() {
 
         <SwapOrder swap={labels.activitiesFirst}>
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title={labels.menu === 'Menu' ? 'Menu items' : labels.menu} items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel={`Add ${labels.menuItem}`} errors={err.menu} sectionOptional={labels.sectionOptional} />
+          <ItemRows title={labels.menu === 'Menu' ? 'Menu items' : labels.menu} items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel={`Add ${labels.menuItem}`} errors={err.menu} sectionOptional={labels.sectionOptional} freeAllowed={labels.freeAllowed} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title={labels.activities} items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel={`Add ${labels.activityItem}`} errors={err.activities} listError={err.activitiesList} sectionOptional={labels.sectionOptional} />
+          <ItemRows title={labels.activities} items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel={`Add ${labels.activityItem}`} errors={err.activities} listError={err.activitiesList} sectionOptional={labels.sectionOptional} freeAllowed={labels.freeAllowed} />
         </section>
         </SwapOrder>
 

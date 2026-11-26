@@ -6,6 +6,7 @@
 // writes are authenticated as the signed-in staff session.
 import { useSyncExternalStore } from 'react';
 import { supabase, onSignedIn } from './supabaseClient';
+import { cheapestItemPrice } from '../../utils/fromPrice';
 
 const ROLE_LABELS = { owner: 'Admin', support: 'Support', agent: 'Agent', customer: 'User' };
 
@@ -128,10 +129,7 @@ function slugify(name) {
 // moment someone edits the menu/activities without also updating this
 // field by hand. Derived here so it can never go stale.
 function minItemPrice(venue) {
-  const prices = [...(venue.menu || []), ...(venue.activities || [])]
-    .map((i) => Number(i.price) || 0)
-    .filter((p) => p > 0);
-  return prices.length ? Math.min(...prices) : Number(venue.fromPrice) || 0;
+  return cheapestItemPrice(venue) ?? (Number(venue.fromPrice) || 0);
 }
 
 function venueColumns(venue) {

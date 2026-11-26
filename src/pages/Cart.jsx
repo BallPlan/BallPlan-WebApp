@@ -9,7 +9,7 @@ import BackButton from '../components/BackButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useCart } from '../context/CartContext';
 import { useBudget } from '../context/BudgetContext';
-import { formatNaira } from '../utils/currency';
+import { formatNaira, formatItemPrice } from '../utils/currency';
 import { useToast } from '../context/ToastContext';
 
 export default function Cart() {
@@ -76,7 +76,7 @@ export default function Cart() {
                     />
                   </div>
                   <div className="flex flex-col items-end gap-3">
-                    <span className="font-bold text-brand">{formatNaira(item.unitPrice * item.qty)}</span>
+                    <span className="font-bold text-brand">{formatItemPrice(item.unitPrice * item.qty)}</span>
                     <button
                       onClick={() => removeItem(item.key)}
                       className="text-ink/30 transition hover:scale-110 hover:text-red-500 dark:text-white/30"
