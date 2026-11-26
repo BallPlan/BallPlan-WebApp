@@ -14,7 +14,7 @@ import { supabase } from '../lib/supabaseClient';
 import { sectionNames } from '../../utils/itemSections';
 import { useActiveUploads } from '../../utils/uploadMedia';
 import { draftKey as makeDraftKey, readDraft, writeDraft, clearDraft } from '../../utils/venueDraft';
-import { validateVenue } from '../../admin/lib/venueValidation';
+import { validateVenue, sectionTooLong, SECTION_TOO_LONG_MSG } from '../../admin/lib/venueValidation';
 import { itemLabels } from '../../utils/itemLabels';
 import { celebrateStreak } from '../lib/streakData';
 import SwapOrder from '../../components/SwapOrder';
@@ -70,7 +70,7 @@ const inputCls =
 // Red outline for an input that failed the required-field check.
 const inv = (error) => (error ? ' border-red-400 ring-2 ring-red-400/20 dark:border-red-500' : '');
 
-function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError }) {
+function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSections = [], addLabel = 'Add', errors = {}, listError, sectionOptional = false }) {
   // `onChange` takes an updater (list => new list) applied to the *latest*
   // list. Photo uploads finish seconds later; updating a snapshot captured
   // when the upload started would wipe out every row added or edited (and
@@ -126,11 +126,12 @@ function ItemRows({ title, items, onChange, priceLabel = 'Price', suggestedSecti
                 value={item.section || ''}
                 onChange={(e) => update(item, i, { section: e.target.value })}
                 list={listId}
-                placeholder="Category * (e.g. Food, Drinks, Desserts)"
+                placeholder={sectionOptional ? 'Category (optional) 1–2 words (e.g. Rides, Tours)' : 'Category * 1–2 words (e.g. Food, Drinks, Rides)'}
+                maxLength={30}
                 aria-label="Category"
-                className={`${inputCls}${inv(e.section)}`}
+                className={`${inputCls}${inv(e.section || (sectionTooLong(item.section) ? SECTION_TOO_LONG_MSG : ''))}`}
               />
-              <FieldError msg={e.section} />
+              <FieldError msg={e.section || (sectionTooLong(item.section) ? SECTION_TOO_LONG_MSG : '')} />
             </div>
             <div className="mt-2">
               <MediaInput
@@ -527,11 +528,11 @@ export default function AgentVenueForm() {
 
         <SwapOrder swap={labels.activitiesFirst}>
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title={labels.menu === 'Menu' ? 'Menu items' : labels.menu} items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel={`Add ${labels.menuItem}`} errors={err.menu} />
+          <ItemRows title={labels.menu === 'Menu' ? 'Menu items' : labels.menu} items={venue.menu} onChange={(fn) => setVenue((v) => ({ ...v, menu: fn(v.menu) }))} suggestedSections={['Food', 'Drinks']} addLabel={`Add ${labels.menuItem}`} errors={err.menu} sectionOptional={labels.sectionOptional} />
         </section>
 
         <section className="rounded-2xl bg-white p-5 shadow-card dark:bg-[#1a1b20]">
-          <ItemRows title={labels.activities} items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel={`Add ${labels.activityItem}`} errors={err.activities} listError={err.activitiesList} />
+          <ItemRows title={labels.activities} items={venue.activities} onChange={(fn) => setVenue((v) => ({ ...v, activities: fn(v.activities) }))} priceLabel="Price" addLabel={`Add ${labels.activityItem}`} errors={err.activities} listError={err.activitiesList} sectionOptional={labels.sectionOptional} />
         </section>
         </SwapOrder>
 

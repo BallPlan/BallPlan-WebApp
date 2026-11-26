@@ -10,11 +10,20 @@ const blank = (v) => !String(v ?? '').trim();
 const itemInUse = (i) => !blank(i.name) || !blank(i.price) || !blank(i.image) || !blank(i.desc) || !blank(i.section);
 const feeInUse = (f) => !blank(f.label) || !blank(f.amount);
 
-function itemErrors(item) {
+// Item categories become buttons on the venue page (Food, Drinks, Rides),
+// so they must be short: 1–2 words. Longer text belongs in the description.
+export const MAX_SECTION_WORDS = 2;
+export const sectionTooLong = (section) => String(section ?? '').trim().split(/\s+/).filter(Boolean).length > MAX_SECTION_WORDS;
+export const SECTION_TOO_LONG_MSG = 'Category must be 1–2 words (e.g. Food, Rides). Put longer text in the description.';
+
+function itemErrors(item, sectionOptional) {
   const e = {};
   if (blank(item.name)) e.name = 'Name required';
   if (!(Number(item.price) > 0)) e.price = 'Price required';
-  if (blank(item.section)) e.section = 'Category required';
+  if (blank(item.section)) {
+    if (!sectionOptional) e.section = 'Category required';
+  }
+  else if (sectionTooLong(item.section)) e.section = SECTION_TOO_LONG_MSG;
   if (blank(item.image)) e.image = 'Image required';
   return e;
 }
@@ -66,7 +75,7 @@ export function validateVenue(venue) {
   ].forEach(([key, noun]) => {
     (venue[key] || []).forEach((item, i) => {
       if (!itemInUse(item)) return;
-      const e = itemErrors(item);
+      const e = itemErrors(item, L.sectionOptional);
       if (Object.keys(e).length) {
         errors[key][i] = e;
         const missing = Object.values(e).map((m) => m.replace(' required', '').toLowerCase());

@@ -33,10 +33,12 @@ function normalizeVenue(v, itemsByVenue) {
     openTime: v.open_time,
     closeTime: v.close_time,
     hasVideo: v.has_video,
-    // Menu items are optional when posting a venue, so only show the
-    // Menu/Activities tab once there's actually something in it.
-    hasMenu: v.has_menu && menu.length > 0,
-    hasActivities: v.has_activities && activities.length > 0,
+    // Show a Menu/Activities tab whenever it actually has items, whatever
+    // the venue's "Has menu"/"Has activities" ticks say. (A venue ticked
+    // "Has menu" whose items were all entered as activities used to show
+    // neither tab, while admin showed the items fine.)
+    hasMenu: menu.length > 0,
+    hasActivities: activities.length > 0,
     hiddenFees: v.hidden_fees || [],
     menu,
     activities,

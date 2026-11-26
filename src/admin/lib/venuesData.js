@@ -150,8 +150,10 @@ function venueColumns(venue) {
     hero: venue.hero || null,
     gallery: venue.gallery || [],
     has_video: !!venue.hasVideo,
-    has_menu: !!venue.hasMenu,
-    has_activities: !!venue.hasActivities,
+    // A list that has items is always marked as present, so the ticks
+    // can't hide items that were entered.
+    has_menu: !!venue.hasMenu || (venue.menu || []).some((m) => m.name),
+    has_activities: !!venue.hasActivities || (venue.activities || []).some((a) => a.name),
     hidden_fees: venue.hiddenFees || [],
     published: venue.published ?? true,
   };
