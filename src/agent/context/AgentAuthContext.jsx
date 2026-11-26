@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { squareAvatarBlob } from '../../utils/resizeImage';
+import { celebrateStreak } from '../lib/streakData';
+import { dayKey } from '../../utils/streak';
 
 const AgentAuthContext = createContext(null);
 
@@ -30,6 +32,9 @@ export function AgentAuthProvider({ children }) {
   // True once we've signed someone out because admin/support deactivated
   // their account; drives the "account deactivated" popup.
   const [deactivated, setDeactivated] = useState(false);
+  // Set by signIn() so the streak popup shows after every sign-in (not
+  // just the first visit of the day).
+  const justSignedIn = useRef(false);
 
   const kickOut = useCallback(async () => {
     setDeactivated(true);
@@ -87,7 +92,33 @@ export function AgentAuthProvider({ children }) {
         kickOut();
       }
     };
-    const recheck = async () => check(await loadProfile(userId));
+    // Tells admin "this agent was signed in today" (Settings > Agents >
+    // View details). At most every 10 minutes; failures don't matter.
+    let lastVisit = 0;
+    const recordVisit = () => {
+      if (Date.now() - lastVisit < 10 * 60_000) return null;
+      lastVisit = Date.now();
+      return supabase.rpc('record_portal_visit');
+    };
+    // Streak popup on opening the dashboard: after every sign-in, and on
+    // the first visit of each day for agents who stay signed in.
+    const seenKey = `ballplan:agent-streak-seen:${userId}:${dayKey()}`;
+    recordVisit()?.then(({ error }) => {
+      if (stopped || error) return;
+      let seenToday = false;
+      try {
+        seenToday = localStorage.getItem(seenKey) === '1';
+        localStorage.setItem(seenKey, '1');
+      } catch {
+        /* storage blocked: fall back to showing it */
+      }
+      if (justSignedIn.current || !seenToday) celebrateStreak('signin');
+      justSignedIn.current = false;
+    });
+    const recheck = async () => {
+      recordVisit();
+      check(await loadProfile(userId));
+    };
 
     const channel = supabase
       .channel(`agent-status-${userId}`)
@@ -128,6 +159,7 @@ export function AgentAuthProvider({ children }) {
     }
 
     setDeactivated(false);
+    justSignedIn.current = true;
     setProfile(agentProfile);
     return agentProfile;
   };

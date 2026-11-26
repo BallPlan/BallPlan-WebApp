@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   User,
   ShieldCheck,
@@ -11,6 +12,7 @@ import {
   KeyRound,
   Copy,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -269,6 +271,7 @@ const emptyStaffForm = { firstName: '', lastName: '', email: '', password: '' };
 // role and copy. Both create real Supabase Auth accounts via Edge Functions.
 function StaffSection({ role, roleLabel, emailPlaceholder }) {
   const { notify } = useToast();
+  const navigate = useNavigate();
   const staffSnapshot = useStaffStore();
   const staff = useMemo(() => (role === 'agent' ? getAgents() : getSupportStaff()), [staffSnapshot, role]);
   const [form, setForm] = useState(emptyStaffForm);
@@ -438,6 +441,9 @@ function StaffSection({ role, roleLabel, emailPlaceholder }) {
                   </span>
                   <ActionMenu
                     items={[
+                      ...(role === 'agent'
+                        ? [{ label: 'View details', icon: FileText, onClick: () => navigate(`/agents/${person.id}`) }, { divider: true }]
+                        : []),
                       {
                         label: person.status === 'suspended' ? 'Reinstate' : 'Suspend',
                         icon: Ban,
@@ -509,7 +515,9 @@ function StaffSection({ role, roleLabel, emailPlaceholder }) {
 }
 
 export default function Settings() {
-  const [tab, setTab] = useState('profile');
+  // ?tab=team opens straight on Agents (used by "Back" on Agent details).
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'profile');
   const { user } = useAdminAuth();
   const isOwner = user?.role === 'owner';
   const visibleTabs = TABS.filter((t) => !t.ownerOnly || isOwner);

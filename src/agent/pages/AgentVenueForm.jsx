@@ -16,6 +16,7 @@ import { useActiveUploads } from '../../utils/uploadMedia';
 import { draftKey as makeDraftKey, readDraft, writeDraft, clearDraft } from '../../utils/venueDraft';
 import { validateVenue } from '../../admin/lib/venueValidation';
 import { itemLabels } from '../../utils/itemLabels';
+import { celebrateStreak } from '../lib/streakData';
 import SwapOrder from '../../components/SwapOrder';
 
 // Which portal this form runs in; drafts are kept separately per portal.
@@ -331,6 +332,7 @@ export default function AgentVenueForm() {
         notify(`${payload.name} added.`, 'success');
       }
       clearDraft(draftKey);
+      celebrateStreak(isEdit ? 'edited' : 'added', payload.name);
       navigate('/venues');
     } catch (error) {
       console.error('[VenueForm] save failed', error);

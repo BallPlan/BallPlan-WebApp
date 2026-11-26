@@ -12,6 +12,8 @@ import AgentVenues from './pages/AgentVenues';
 import AgentVenueForm from './pages/AgentVenueForm';
 import AgentVenueDetails from './pages/AgentVenueDetails';
 import AgentReviews from './pages/AgentReviews';
+import AgentStreak from './pages/AgentStreak';
+import StreakCelebration from './components/StreakCelebration';
 import AgentSettings from './pages/AgentSettings';
 import AgentLogout from './pages/AgentLogout';
 
@@ -45,6 +47,7 @@ export default function AgentApp() {
         <HashRouter>
           <SyncAgentScope />
           <DeactivatedNotice />
+          <StreakCelebration />
           <Routes>
             <Route path="/login" element={<AgentLogin />} />
             <Route
@@ -60,6 +63,7 @@ export default function AgentApp() {
               <Route path="/venues/:id" element={<AgentVenueDetails />} />
               <Route path="/venues/:id/edit" element={<AgentVenueForm />} />
               <Route path="/reviews" element={<AgentReviews />} />
+              <Route path="/streak" element={<AgentStreak />} />
               <Route path="/settings" element={<AgentSettings />} />
               <Route path="/logout" element={<AgentLogout />} />
               <Route path="*" element={<Navigate to="/" replace />} />

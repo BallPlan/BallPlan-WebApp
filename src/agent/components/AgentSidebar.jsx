@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Store, Star, Settings, X, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { LayoutDashboard, Store, Star, Flame, Settings, X, LogOut, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import logoIcon from '../../assets/logo-icon.png';
 
 const LINKS = [
   { to: '/', end: true, icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/venues', icon: Store, label: 'Venues' },
   { to: '/reviews', icon: Star, label: 'Reviews' },
+  { to: '/streak', icon: Flame, label: 'Streak' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

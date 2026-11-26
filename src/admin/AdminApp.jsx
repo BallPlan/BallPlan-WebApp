@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Venues from './pages/Venues';
 import VenueForm from './pages/VenueForm';
 import AdminVenueDetails from './pages/AdminVenueDetails';
+import AgentDetails from './pages/AgentDetails';
 import Users from './pages/Users';
 import Reviews from './pages/Reviews';
 import Waitlist from './pages/Waitlist';
@@ -73,6 +74,7 @@ export default function AdminApp({ LoginPage = AdminLogin, allowedRoles }) {
               <Route path="/categories" element={<Categories />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/agents/:id" element={<AgentDetails />} />
               <Route path="/logout" element={<Logout />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
