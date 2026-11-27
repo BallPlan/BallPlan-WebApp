@@ -5,6 +5,7 @@
 // not every field reference across Home/Search/Details/PlanResult/etc.
 import { useSyncExternalStore } from 'react';
 import { supabase } from './supabaseClient';
+import { fetchAllRows } from '../utils/fetchAllRows';
 
 let venues = [];
 let categories = [];
@@ -49,7 +50,7 @@ async function fetchAll() {
   const [{ data: cats, error: catErr }, { data: vs, error: vErr }, { data: items, error: iErr }] = await Promise.all([
     supabase.from('categories').select('*').eq('status', 'active').order('name'),
     supabase.from('venues').select('*').eq('published', true).order('created_at', { ascending: false }),
-    supabase.from('venue_items').select('*').order('sort_order'),
+    fetchAllRows(() => supabase.from('venue_items').select('*').order('venue_id').order('sort_order').order('id')),
   ]);
   if (catErr || vErr || iErr) {
     console.error('[venuesData] fetch failed', catErr || vErr || iErr);

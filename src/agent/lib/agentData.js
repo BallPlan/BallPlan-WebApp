@@ -7,6 +7,7 @@
 import { useSyncExternalStore } from 'react';
 import { supabase } from './supabaseClient';
 import { cheapestItemPrice } from '../../utils/fromPrice';
+import { fetchAllRows } from '../../utils/fetchAllRows';
 
 let venues = [];
 let currentAgentId = null;
@@ -68,12 +69,17 @@ async function fetchAll() {
   const venueIds = (vs || []).map((v) => v.id);
   let items = [];
   if (venueIds.length) {
-    const { data: itemsData, error: iErr } = await supabase
-      .from('venue_items')
-      .select('*')
-      .in('venue_id', venueIds)
-      .order('sort_order');
-    if (iErr) console.error('[agentData] fetch items failed', iErr);
+    const { data: itemsData, error: iErr } = await fetchAllRows(() =>
+      supabase.from('venue_items').select('*').in('venue_id', venueIds).order('venue_id').order('sort_order').order('id'),
+    );
+    if (iErr) {
+      // Never show venues without their items: an edit page opened from
+      // that would look empty (and saving it used to delete the items).
+      // Keep what was loaded before and try again shortly.
+      console.error('[agentData] fetch items failed', iErr);
+      setTimeout(fetchAll, 3000);
+      return;
+    }
     items = itemsData || [];
   }
   const itemsByVenue = {};
@@ -149,7 +155,9 @@ function venueColumns(venue) {
 // and re-inserting everything on every edit used to reset each item's
 // "added to cart" count and cascade-delete its price history.
 async function syncVenueItems(venueId, venue) {
-  const { data: existing, error: exErr } = await supabase.from('venue_items').select('id').eq('venue_id', venueId);
+  const { data: existing, error: exErr } = await fetchAllRows(() =>
+    supabase.from('venue_items').select('id').eq('venue_id', venueId).order('id'),
+  );
   if (exErr) throw exErr;
   const inDb = new Set((existing || []).map((r) => r.id));
   const used = new Set();
@@ -199,7 +207,11 @@ async function syncVenueItems(venueId, venue) {
     if (error) throw error;
   }
 
-  const removed = (existing || []).map((r) => r.id).filter((id) => !used.has(id));
+  // Only delete items the form actually had loaded and the user removed.
+  // Items the form never saw (cut off while loading, or added from another
+  // device meanwhile) are never deleted by a save.
+  const loaded = new Set(venue.loadedItemIds || []);
+  const removed = (existing || []).map((r) => r.id).filter((id) => !used.has(id) && loaded.has(id));
   if (removed.length) {
     const { error } = await supabase.from('venue_items').delete().eq('venue_id', venueId).in('id', removed);
     if (error) throw error;
