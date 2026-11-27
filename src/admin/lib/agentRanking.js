@@ -52,30 +52,6 @@ export function rankAgentStats(stats) {
   return list.sort(byOverall);
 }
 
-/**
- * Same, built from admin data (profiles, venues, staff_daily_activity rows).
- */
-export function rankAgents(agents, venues, dayRows) {
-  const daysByAgent = {};
-  dayRows.forEach((r) => {
-    (daysByAgent[r.user_id] ||= []).push(r.day);
-  });
-  return rankAgentStats(
-    agents.map((a) => {
-      const mine = venues.filter((v) => v.createdBy === a.id);
-      return {
-        id: a.id,
-        name: [a.first_name, a.last_name].filter(Boolean).join(' ') || a.email,
-        status: a.status,
-        days: daysByAgent[a.id] || [],
-        venues: mine.length,
-        items: mine.reduce((n, v) => n + v.menu.length + v.activities.length, 0),
-        views: mine.reduce((n, v) => n + (Number(v.viewsCount) || 0), 0),
-      };
-    }),
-  );
-}
-
 // What it would take to gain `gap` points, in plain words.
 export function pointsToCatchUp(gap) {
   const g = Math.max(1, gap);

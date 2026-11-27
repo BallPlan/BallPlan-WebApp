@@ -39,3 +39,39 @@ export function sectionNames(items = []) {
     .map((g) => g.name)
     .filter((n) => n !== UNCATEGORISED);
 }
+
+/**
+ * Categories used across several item lists, most-used first. Spellings
+ * that differ only in case count as one ("drinks" + "Drinks"), shown the
+ * way they were most often written.
+ */
+export function rankSections(lists = []) {
+  const counts = new Map(); // lower -> { total, spellings: Map }
+  lists.forEach((items) =>
+    (items || []).forEach((item) => {
+      const name = sectionOf(item);
+      if (!name) return;
+      const key = name.toLowerCase();
+      const entry = counts.get(key) || { total: 0, spellings: new Map() };
+      entry.total += 1;
+      entry.spellings.set(name, (entry.spellings.get(name) || 0) + 1);
+      counts.set(key, entry);
+    }),
+  );
+  return [...counts.values()]
+    .sort((a, b) => b.total - a.total)
+    .map((e) => [...e.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+}
+
+/** Joins suggestion lists in order, dropping repeats (case-insensitive). */
+export function mergeSuggestions(...groups) {
+  const seen = new Set();
+  const out = [];
+  groups.flat().forEach((name) => {
+    const key = String(name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(String(name).trim());
+  });
+  return out;
+}

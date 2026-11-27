@@ -67,12 +67,18 @@ function improvementTips(me, list) {
   return tips;
 }
 
-export default function AgentLeaderboard({ client, mode = 'staff', currentUserId }) {
+/**
+ * The ranking itself, from get_agent_leaderboard(). The dashboards' table
+ * and the admin Agent details page both use this, so they always agree.
+ * Pass client = null to skip fetching.
+ * @returns {{ rows, ranking, error }} (rows null while loading)
+ */
+export function useAgentRanking(client, mode = 'staff') {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
-  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
+    if (!client) return undefined;
     let cancelled = false;
     client.rpc('get_agent_leaderboard').then(({ data, error: err }) => {
       if (cancelled) return;
@@ -100,6 +106,15 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
       }));
     return rankAgentStats(stats);
   }, [rows, mode]);
+
+  return { rows, ranking, error };
+}
+
+// `data` = a useAgentRanking() result the parent already has (no refetch).
+export default function AgentLeaderboard({ client, mode = 'staff', currentUserId, data }) {
+  const own = useAgentRanking(data ? null : client, mode);
+  const { rows, ranking, error } = data || own;
+  const [showAll, setShowAll] = useState(false);
 
   const me = ranking?.find((a) => a.id === currentUserId);
   const visible = useMemo(() => {
@@ -188,7 +203,9 @@ export default function AgentLeaderboard({ client, mode = 'staff', currentUserId
                       <td className="py-2.5 pr-3">
                         <div className="flex min-w-0 items-center gap-2.5">
                           <Initials agent={a} highlight={isMe} />
-                          {mode === 'staff' ? (
+                          {mode === 'staff' && isMe ? (
+                            <span className="truncate font-bold text-brand">{a.name} (this agent)</span>
+                          ) : mode === 'staff' ? (
                             <Link to={`/agents/${a.id}`} className="truncate font-semibold text-ink hover:text-brand dark:text-white">
                               {a.name}
                             </Link>

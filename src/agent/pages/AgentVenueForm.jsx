@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, Trash2, ImagePlus, Save, Eye, Loader2 } from 'lucide-react';
-import { getVenueById, addVenue, updateVenue, getCategories, useVenuesStore } from '../lib/agentData';
+import { getVenueById, getVenues, addVenue, updateVenue, getCategories, useVenuesStore } from '../lib/agentData';
 import { useToast } from '../../context/ToastContext';
 import { integerInputProps } from '../../utils/integerInput';
 import { formatNaira, parseFeeAmount } from '../../utils/currency';
@@ -11,7 +11,8 @@ import { NIGERIA_STATES, splitLocation, joinLocation } from '../../utils/nigeria
 import { to24Hour, to12Hour } from '../../utils/timeFormat';
 import MediaInput from '../../admin/components/MediaInput';
 import { supabase } from '../lib/supabaseClient';
-import { sectionNames } from '../../utils/itemSections';
+import { rankSections, mergeSuggestions } from '../../utils/itemSections';
+import SectionInput from '../../components/SectionInput';
 import { useActiveUploads } from '../../utils/uploadMedia';
 import { useVenueDraft } from '../../utils/useVenueDraft';
 import { AutosaveStatus, DraftBanners, DraftLoading } from '../../components/VenueDraftNotices';
@@ -80,6 +81,7 @@ function ItemRows({
   onChange,
   priceLabel = 'Price',
   suggestedSections = [],
+  pastSections = [],
   addLabel = 'Add',
   errors = {},
   listError,
@@ -94,9 +96,12 @@ function ItemRows({
   const update = (item, i, patch) =>
     onChange((list) => list.map((it, idx) => (sameRow(item, i)(it, idx) ? { ...it, ...patch } : it)));
   const remove = (item, i) => onChange((list) => list.filter((it, idx) => !sameRow(item, i)(it, idx)));
-  // Category suggestions: whatever this list already uses, plus defaults.
-  const listId = `sections-${title.replace(/\W+/g, '-').toLowerCase()}`;
-  const sectionOptions = [...new Set([...sectionNames(items), ...suggestedSections])];
+  // Category suggestions, best first: what this list already uses, then
+  // what this person used on their other venues, then general defaults.
+  const sectionOptions = useMemo(
+    () => mergeSuggestions(rankSections([items]), pastSections, suggestedSections),
+    [items, pastSections, suggestedSections],
+  );
   const add = () =>
     onChange((list) => [
       ...list,
@@ -113,11 +118,6 @@ function ItemRows({
   return (
     <div>
       <h3 className="text-sm font-bold text-ink dark:text-white">{title}</h3>
-      <datalist id={listId}>
-        {sectionOptions.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
       <div className="mt-3 space-y-3">
         {items.length === 0 && <p className="text-xs text-ink/35 dark:text-white/35">Nothing added yet.</p>}
         {items.map((item, i) => {
@@ -147,10 +147,10 @@ function ItemRows({
               </div>
               <FieldError msg={[e.name, e.price].filter(Boolean).join(' · ')} />
               <div className="mt-2">
-                <input
+                <SectionInput
                   value={item.section || ''}
-                  onChange={(e) => update(item, i, { section: e.target.value })}
-                  list={listId}
+                  onChange={(v) => update(item, i, { section: v })}
+                  suggestions={sectionOptions}
                   placeholder={
                     sectionOptional
                       ? 'Category (optional) 1–2 words (e.g. Rides, Tours)'
@@ -256,6 +256,18 @@ export default function AgentVenueForm() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, id, venuesSnapshot]);
+  // Categories this person used on their other venues (menu and
+  // activities kept apart), most-used first, then everyone else's.
+  const pastSections = useMemo(() => {
+    const others = getVenues().filter((v) => v.id !== id);
+    const isMine = () => true;
+    const mine = others.filter(isMine);
+    const rest = others.filter((v) => !isMine(v));
+    const pick = (key) =>
+      mergeSuggestions(rankSections(mine.map((v) => v[key])), rankSections(rest.map((v) => v[key])));
+    return { menu: pick('menu'), activities: pick('activities') };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venuesSnapshot, authUser?.id, id]);
   const draft = useVenueDraft({ client: supabase, userId: authUser?.id, portal: PORTAL, venueId: id, saved, venue, setVenue });
   const [confirmStartOver, setConfirmStartOver] = useState(false);
   const [slowLoad, setSlowLoad] = useState(false);
@@ -588,6 +600,7 @@ export default function AgentVenueForm() {
                   suggestedSections={['Food', 'Drinks']}
                   addLabel={`Add ${labels.menuItem}`}
                   errors={err.menu}
+                  pastSections={pastSections.menu}
                   sectionOptional={labels.sectionOptional}
                   freeAllowed={labels.freeAllowed}
                 />
@@ -601,6 +614,7 @@ export default function AgentVenueForm() {
                   priceLabel="Price"
                   addLabel={`Add ${labels.activityItem}`}
                   errors={err.activities}
+                  pastSections={pastSections.activities}
                   listError={err.activitiesList}
                   sectionOptional={labels.sectionOptional}
                   freeAllowed={labels.freeAllowed}

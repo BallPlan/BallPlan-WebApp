@@ -16,8 +16,9 @@ import {
 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 import DayMark from '../../components/DayMark';
-import { dayKey, computeStreak, shiftDay } from '../../utils/streak';
-import { rankAgents, ACTIVE_WINDOW_DAYS, POINTS } from '../lib/agentRanking';
+import { dayKey, computeStreak } from '../../utils/streak';
+import { ACTIVE_WINDOW_DAYS } from '../lib/agentRanking';
+import AgentLeaderboard, { useAgentRanking } from '../../components/AgentLeaderboard';
 import StatCard from '../components/StatCard';
 import { useStaffStore, getAgents } from '../lib/staffData';
 import { useVenuesStore, getVenues } from '../lib/venuesData';
@@ -108,25 +109,9 @@ export default function AgentDetails() {
   const lastActive = days?.[0]?.last_seen;
   const streak = useMemo(() => computeStreak((days || []).map((d) => d.day)), [days]);
 
-  // Every agent's recent days, to rank this agent against the others.
-  const [allDays, setAllDays] = useState(null);
-  useEffect(() => {
-    let cancelled = false;
-    supabase
-      .from('staff_daily_activity')
-      .select('user_id, day')
-      .gte('day', shiftDay(dayKey(), -120))
-      .limit(10000)
-      .then(({ data }) => !cancelled && setAllDays(data || []));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const ranking = useMemo(
-    () => (allDays ? rankAgents(getAgents(), getVenues(), allDays) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allDays, staffSnapshot, venuesSnapshot],
-  );
+  // Same ranking as the dashboard leaderboard (one source: the database).
+  const rankingData = useAgentRanking(supabase, 'staff');
+  const { ranking } = rankingData;
   const me = ranking?.find((a) => a.id === id);
 
   if (!agent) {
@@ -238,50 +223,11 @@ export default function AgentDetails() {
             ))}
           </div>
 
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead>
-                <tr className="text-xs font-semibold uppercase tracking-wide text-ink/40 dark:text-white/40">
-                  <th className="pb-2 font-semibold">#</th>
-                  <th className="pb-2 font-semibold">Agent</th>
-                  <th className="pb-2 text-center font-semibold">Points</th>
-                  <th className="pb-2 text-center font-semibold">Active days ({ACTIVE_WINDOW_DAYS}d)</th>
-                  <th className="pb-2 text-center font-semibold">Streak</th>
-                  <th className="pb-2 text-center font-semibold">Venues</th>
-                  <th className="pb-2 text-center font-semibold">Items</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink/5 dark:divide-white/5">
-                {ranking.map((a) => (
-                  <tr key={a.id} className={a.id === id ? 'bg-brand/5 dark:bg-brand/10' : ''}>
-                    <td className="py-2.5 pl-2 pr-3 font-extrabold text-ink dark:text-white">
-                      {a.overallRank === 1 ? '🥇' : a.overallRank === 2 ? '🥈' : a.overallRank === 3 ? '🥉' : a.overallRank}
-                    </td>
-                    <td className="py-2.5 pr-3">
-                      {a.id === id ? (
-                        <span className="font-bold text-brand">{a.name} (this agent)</span>
-                      ) : (
-                        <Link to={`/agents/${a.id}`} className="font-semibold text-ink hover:text-brand dark:text-white">
-                          {a.name}
-                        </Link>
-                      )}
-                      {a.status === 'suspended' && <span className="ml-2 text-[11px] font-bold text-red-500">Suspended</span>}
-                    </td>
-                    <td className="py-2.5 text-center font-extrabold text-brand">{a.points}</td>
-                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.activeDays}</td>
-                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.streak}</td>
-                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.venues}</td>
-                    <td className="py-2.5 text-center text-ink/70 dark:text-white/70">{a.items}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-3 text-[11px] text-ink/40 dark:text-white/40">
-            Points: +{POINTS.venue} per venue, +{POINTS.item} per menu item or activity (best performing), +{POINTS.activeDay} per
-            active day in the last {ACTIVE_WINDOW_DAYS} days and +{POINTS.streakDay} per day of current streak (most active).
-            Overall = all points.
-          </p>
+        </div>
+      )}
+      {ranking && (
+        <div className="mt-5">
+          <AgentLeaderboard data={rankingData} mode="staff" currentUserId={id} />
         </div>
       )}
 
