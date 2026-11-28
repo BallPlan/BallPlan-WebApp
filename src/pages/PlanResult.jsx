@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2, Info } from 'lucide-react';
+import { Star, Download, ShoppingBag, UtensilsCrossed, Ticket, MapPin, Sparkles, Play, Loader2, Info, Users } from 'lucide-react';
 import { getPublishedVenues, useVenuesStore } from '../lib/venuesData';
 import ImageWithFallback from '../components/ImageWithFallback';
 import Lightbox from '../components/Lightbox';
@@ -78,13 +78,23 @@ function pickMatches({ max, location, category }, venues) {
   return { matches: closest, tier: 'suggestions' };
 }
 
-function buildSelection(venue) {
-  return {
-    menu: venue.menu.length ? venue.menu.slice(0, 2).map((item) => ({ itemId: item.id, qty: 2 })) : [],
-    activities: venue.activities.length
-      ? venue.activities.slice(0, 2).map((item) => ({ itemId: item.id, qty: 1 }))
-      : [],
-  };
+// Starting picks for a venue, planned for the group: up to 2 menu items
+// and 2 activities, one of each per person. If that goes over the budget,
+// the priciest picks are dropped (always keeping at least one, so the
+// result never comes back empty). The user can still change quantities.
+function buildSelection(venue, people = 2, budget = Infinity) {
+  const n = Math.max(1, Number(people) || 1);
+  const picks = [
+    ...venue.menu.slice(0, 2).map((item) => ({ kind: 'menu', item })),
+    ...venue.activities.slice(0, 2).map((item) => ({ kind: 'activities', item })),
+  ];
+  const cost = (list) => list.reduce((sum, p) => sum + (Number(p.item.price) || 0) * n, 0);
+  while (picks.length > 1 && cost(picks) > budget) {
+    const priciest = picks.reduce((a, b) => ((Number(b.item.price) || 0) > (Number(a.item.price) || 0) ? b : a));
+    picks.splice(picks.indexOf(priciest), 1);
+  }
+  const of = (kind) => picks.filter((p) => p.kind === kind).map((p) => ({ itemId: p.item.id, qty: n }));
+  return { menu: of('menu'), activities: of('activities') };
 }
 
 export default function PlanResult() {
@@ -115,12 +125,12 @@ export default function PlanResult() {
   useEffect(() => {
     const init = {};
     matches.forEach((venue) => {
-      init[venue.id] = buildSelection(venue);
+      init[venue.id] = buildSelection(venue, params?.people, params?.max);
     });
     setSelections(init);
     setPageIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches.length]);
+  }, [matches.length, params?.people, params?.max]);
 
   useEffect(() => {
     setLightboxIndex(null);
@@ -322,6 +332,13 @@ export default function PlanResult() {
               </span>
             </div>
 
+            {params.people > 0 && allSelected.length > 0 && (
+              <p className="mt-5 flex items-center gap-1.5 text-xs font-semibold text-ink/50 dark:text-white/50">
+                <Users size={14} className="text-brand" />
+                Planned for {params.people} {params.people === 1 ? 'person' : 'people'}: one of each pick per person. Adjust the
+                quantities below.
+              </p>
+            )}
             <SwapOrder swap={labels.activitiesFirst}>
             {selectedMenu.length > 0 && (
               <div className="mt-6">
@@ -366,7 +383,7 @@ export default function PlanResult() {
               />
             </div>
             <p className="mt-2 text-center text-xs text-ink/35 dark:text-white/35">
-              {totalItemsCount} item{totalItemsCount === 1 ? '' : 's'} selected · prices are 90% accurate
+              {totalItemsCount} item{totalItemsCount === 1 ? '' : 's'} selected · prices are 98% accurate
             </p>
 
             <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">

@@ -94,7 +94,7 @@ export default function Cart() {
             <div className="mb-1 flex items-baseline justify-between">
               <div>
                 <p className="text-lg font-extrabold text-ink dark:text-white">Estimated Total - {totalItems} items</p>
-                <p className="text-xs text-ink/40 dark:text-white/40">The prices are 90% accurate.</p>
+                <p className="text-xs text-ink/40 dark:text-white/40">The prices are 98% accurate.</p>
               </div>
               <span className="text-2xl font-extrabold text-brand">{formatNaira(totalPrice)}</span>
             </div>

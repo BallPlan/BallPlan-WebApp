@@ -24,6 +24,7 @@ export default function Venues() {
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [category, setCategory] = useState('All');
   const [location, setLocation] = useState('All');
+  const [status, setStatus] = useState('All'); // All | Active | Inactive
   const [view, setView] = useState('list');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { notify } = useToast();
@@ -43,10 +44,11 @@ export default function Venues() {
     return venues.filter((v) => {
       if (category !== 'All' && v.tab !== category) return false;
       if (location !== 'All' && !v.location.includes(location)) return false;
+      if (status !== 'All' && (v.published === false ? 'Inactive' : 'Active') !== status) return false;
       if (query && !`${v.name} ${v.location} ${v.postedBy?.name || ''}`.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [venues, category, location, query]);
+  }, [venues, category, location, status, query]);
 
   const handleTogglePublish = async (venue) => {
     try {
@@ -148,6 +150,17 @@ export default function Venues() {
               {l}
             </option>
           ))}
+        </select>
+
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          aria-label="Filter by status"
+          className="rounded-full bg-white px-4 py-2.5 text-sm shadow-card outline-none dark:bg-[#1a1b20] dark:text-white"
+        >
+          <option value="All">All statuses</option>
+          <option value="Active">Active (published)</option>
+          <option value="Inactive">Inactive (unpublished)</option>
         </select>
 
         <div className="flex items-center gap-1 rounded-full bg-white p-1 shadow-card dark:bg-[#1a1b20]">

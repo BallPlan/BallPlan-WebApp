@@ -11,14 +11,20 @@ import { useToast } from '../../context/ToastContext';
 export default function AgentVenues() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('All'); // All | Active | Inactive
   const { notify } = useToast();
 
   const venuesSnapshot = useVenuesStore();
   const venues = useMemo(() => getVenues(), [venuesSnapshot]);
 
   const filtered = useMemo(
-    () => venues.filter((v) => !query || `${v.name} ${v.location}`.toLowerCase().includes(query.toLowerCase())),
-    [venues, query],
+    () =>
+      venues.filter(
+        (v) =>
+          (!query || `${v.name} ${v.location}`.toLowerCase().includes(query.toLowerCase())) &&
+          (status === 'All' || (v.published === false ? 'Inactive' : 'Active') === status),
+      ),
+    [venues, query, status],
   );
 
   const handleTogglePublish = async (venue) => {
@@ -38,7 +44,9 @@ export default function AgentVenues() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-ink dark:text-white">Your Venues</h1>
-          <p className="mt-1 text-sm text-ink/50 dark:text-white/50">{venues.length} venue{venues.length === 1 ? '' : 's'} posted by you.</p>
+          <p className="mt-1 text-sm text-ink/50 dark:text-white/50">
+            {venues.length} venue{venues.length === 1 ? '' : 's'} posted by you.
+          </p>
         </div>
         <Link
           to="/venues/new"
@@ -54,19 +62,34 @@ export default function AgentVenues() {
         <StatCard label="Total Views" value={totalViews.toLocaleString()} icon={Eye} tone="sky" />
       </div>
 
-      <div className="relative mt-5 max-w-sm">
-        <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35 dark:text-white/35" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your venues..."
-          className="w-full rounded-full bg-white py-2.5 pl-9 pr-4 text-sm shadow-card outline-none transition focus:ring-2 focus:ring-brand/20 dark:bg-[#1a1b20] dark:text-white"
-        />
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35 dark:text-white/35"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your venues..."
+            className="w-full rounded-full bg-white py-2.5 pl-9 pr-4 text-sm shadow-card outline-none transition focus:ring-2 focus:ring-brand/20 dark:bg-[#1a1b20] dark:text-white"
+          />
+        </div>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          aria-label="Filter by status"
+          className="rounded-full bg-white px-4 py-2.5 text-sm shadow-card outline-none dark:bg-[#1a1b20] dark:text-white"
+        >
+          <option value="All">All statuses</option>
+          <option value="Active">Active (published)</option>
+          <option value="Inactive">Inactive (unpublished)</option>
+        </select>
       </div>
 
       {filtered.length === 0 && (
         <p className="py-16 text-center text-sm text-ink/40 dark:text-white/40">
-          {venues.length === 0 ? "You haven't posted any venues yet." : 'No venues match your search.'}
+          {venues.length === 0 ? "You haven't posted any venues yet." : 'No venues match your search or filter.'}
         </p>
       )}
 
@@ -86,8 +109,16 @@ export default function AgentVenues() {
                 key={venue.id}
                 className="grid grid-cols-1 gap-3 px-4 py-3.5 lg:grid-cols-[2.2fr_0.9fr_0.7fr_0.9fr_0.8fr_0.6fr] lg:items-center"
               >
-                <button onClick={() => navigate(`/venues/${venue.id}/edit`)} className="flex min-w-0 items-center gap-3 text-left">
-                  <ImageWithFallback src={venue.hero} seed={venue.id} alt={venue.name} className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+                <button
+                  onClick={() => navigate(`/venues/${venue.id}/edit`)}
+                  className="flex min-w-0 items-center gap-3 text-left"
+                >
+                  <ImageWithFallback
+                    src={venue.hero}
+                    seed={venue.id}
+                    alt={venue.name}
+                    className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                  />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-ink hover:text-brand dark:text-white">{venue.name}</p>
                     <p className="flex items-center gap-1 truncate text-xs text-ink/40 dark:text-white/40">
@@ -100,7 +131,9 @@ export default function AgentVenues() {
                   <Eye size={13} className="text-ink/35 dark:text-white/35" /> {venue.viewsCount ?? 0}
                 </span>
                 <span className="text-sm text-ink/60 dark:text-white/60">
-                  {venue.createdAt ? new Date(venue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {venue.createdAt
+                    ? new Date(venue.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : '—'}
                 </span>
                 <span
                   className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-bold ${
@@ -129,7 +162,6 @@ export default function AgentVenues() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
